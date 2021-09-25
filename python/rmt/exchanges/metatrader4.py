@@ -4,7 +4,7 @@ import logging
 import threading
 from enum     import IntEnum
 from datetime import datetime, timedelta, timezone
-from typing   import Dict, List, Optional, Set
+from typing   import Any, Dict, List, Optional, Set
 from time     import sleep
 from rmt      import (jsonutil, error, Order, Side, OrderType,
                       Exchange, Tick, Bar, OrderStatus)
@@ -631,33 +631,45 @@ class MetaTrader4(Exchange):
             try:
                 msg = self._pull_socket.recv_string(flags=zmq.DONTWAIT)
 
-                if msg == '':
-                    continue
-
-                values = msg.split(';')
-
-                if len(values) < 4:
-                    raise ValueError('CSV message must have at least 4 fields')
-
-                symbol = values[0]
-
-                if symbol == '':
-                    raise ValueError('symbol must not be empty')
-
-                with self._subscribed_symbols_lock:
-                    if symbol not in self._subscribed_symbols:
-                        continue
+                if msg != '':
+                    self._parse_event_message(msg)
                 
-                    tick = Tick(
-                        server_time = datetime.fromtimestamp(int(values[1]), timezone.utc),
-                        bid = float(values[2]),
-                        ask = float(values[3])
-                    )
-
-                    self._subscribed_symbols[symbol] = tick
             except zmq.error.Again:
                 pass # resource temporarily unavailable, nothing to print
             except ValueError:
                 pass # No data returned, passing iteration.
             except UnboundLocalError:
                 pass # _symbol may sometimes get referenced before being assigned.
+
+    def _parse_event_message(self, event_msg: str):
+        event_dict = json.loads(event_msg)
+
+        if not isinstance(event_dict, Dict):
+            raise ValueError('event message received is not JSON object')
+
+        event_name = jsonutil.read_required(event_dict, 'evt', str)
+
+        if event_name == 'tick':
+            event_msg = jsonutil.read_required(event_dict, 'msg', List)
+            self._parse_tick_event(event_msg)
+        else:
+            print("received unknown event msg '%s'" % event_name)
+
+    def _parse_tick_event(self, event_msg: List):
+        if len(event_msg) < 4:
+            raise ValueError('expected 4 elements in tick message (got: %s)' % len(event_msg))
+
+        symbol    = jsonutil.read_required_index(event_msg, 0, str)
+        timestamp = jsonutil.read_required_index(event_msg, 1, int)
+        bid       = jsonutil.read_required_index(event_msg, 2, float)
+        ask       = jsonutil.read_required_index(event_msg, 3, float)
+
+        with self._subscribed_symbols_lock:
+            if symbol in self._subscribed_symbols:
+                tick = Tick(
+                    server_time = datetime.fromtimestamp(timestamp, timezone.utc),
+                    bid         = bid,
+                    ask         = ask
+                )
+
+                self._subscribed_symbols[symbol] = tick

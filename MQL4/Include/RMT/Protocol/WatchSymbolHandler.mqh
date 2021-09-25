@@ -2,7 +2,7 @@
 
 // Local
 #include "../MessageHandler.mqh"
-#include "../SymbolWatcher.mqh"
+#include "../TickEventWatcher.mqh"
 
 /// Request:
 /// {
@@ -16,6 +16,12 @@
 ///   "symbols": ?array[string]
 /// }
 class WatchSymbolHandler : public MessageHandler {
+public:
+    WatchSymbolHandler(TickEventWatcher& tick_watcher)
+    {
+        m_tick_watcher = GetPointer(tick_watcher);
+    }
+
 private:
     void process() override
     {
@@ -28,18 +34,20 @@ private:
         if (should_watch)
         {
             if (symbol == "*")
-                SymbolWatcher::instance().fill();
+                m_tick_watcher.fill();
             else
-                SymbolWatcher::instance().insert(symbol);
+                m_tick_watcher.insert(symbol);
         }
         else
         {
             if (symbol == "*")
-                SymbolWatcher::instance().clear();
+                m_tick_watcher.clear();
             else
-                SymbolWatcher::instance().remove(symbol);
+                m_tick_watcher.remove(symbol);
         }
 
         write_result_success();
     }
+
+    TickEventWatcher* m_tick_watcher;
 };

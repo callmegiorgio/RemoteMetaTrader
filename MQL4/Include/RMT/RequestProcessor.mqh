@@ -9,10 +9,11 @@
 #include "Protocol/WatchSymbolHandler.mqh"
 #include "MessageDispatcher.mqh"
 #include "Server.mqh"
+#include "TickEventWatcher.mqh"
 
 class RequestProcessor {
 public:
-    RequestProcessor(Server& the_server);
+    RequestProcessor(Server& the_server, TickEventWatcher& the_tick_watcher);
     
     void process();
 
@@ -26,12 +27,12 @@ private:
 //===========================================================================
 // --- RequestProcessor implementation ---
 //===========================================================================
-RequestProcessor::RequestProcessor(Server& the_server)
+RequestProcessor::RequestProcessor(Server& the_server, TickEventWatcher& the_tick_watcher)
 {
     m_server = GetPointer(the_server);
 
     m_dispatcher.set_fallback_handler(new InvalidCommandHandler());
-    m_dispatcher.set_handler("watch_symbol", new WatchSymbolHandler());
+    m_dispatcher.set_handler("watch_symbol", new WatchSymbolHandler(the_tick_watcher));
     m_dispatcher.set_handler("get_tick",     new GetTickHandler());
     m_dispatcher.set_handler("get_bars",     new GetBarsHandler());
     m_dispatcher.set_handler("place_order",  new PlaceOrderHandler());

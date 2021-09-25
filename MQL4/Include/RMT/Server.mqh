@@ -22,7 +22,7 @@ public:
     bool recv_request(string& request);
     bool send_response(string response);
 
-    bool send_ticks(const string& message[]);
+    bool send_event(string event);
 
 private:
     static int last_error_number();
@@ -162,24 +162,7 @@ bool Server::send_response(string response)
     return true;
 }
 
-bool Server::send_ticks(const string& messages[])
+bool Server::send_event(string event)
 {
-    const int n = ArraySize(messages);
-
-    if (n == 0)
-        return true;
-
-    const int last_index = (n - 1);
-
-    for (int i = 0; i < last_index; i++)
-    {
-        if (!m_push_socket.send(messages[i], ZMQ_SNDMORE))
-            break;
-
-        Print("preparing to send tick msg: ", messages[i]);
-    }
-
-    Print("preparing to send tick msg: ", messages[last_index]);
-
-    return m_push_socket.send(messages[last_index], ZMQ_DONTWAIT);
+    return m_push_socket.send(event, ZMQ_DONTWAIT);
 }
