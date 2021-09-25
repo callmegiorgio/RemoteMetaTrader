@@ -1,7 +1,7 @@
 #property strict
 
 // Local
-#include "../MessageHandler.mqh"
+#include "../../MessageHandler.mqh"
 
 /// Request:
 /// {

@@ -1,12 +1,12 @@
 #property strict
 
 // Local
-#include "Protocol/CloseOrderHandler.mqh"
-#include "Protocol/GetBarsHandler.mqh"
-#include "Protocol/GetTickHandler.mqh"
-#include "Protocol/InvalidCommandHandler.mqh"
-#include "Protocol/PlaceOrderHandler.mqh"
-#include "Protocol/WatchSymbolHandler.mqh"
+#include "Protocol/Request/CloseOrderHandler.mqh"
+#include "Protocol/Request/GetBarsHandler.mqh"
+#include "Protocol/Request/GetTickHandler.mqh"
+#include "Protocol/Request/InvalidCommandHandler.mqh"
+#include "Protocol/Request/PlaceOrderHandler.mqh"
+#include "Protocol/Request/WatchSymbolHandler.mqh"
 #include "MessageDispatcher.mqh"
 #include "Server.mqh"
 #include "TickEventWatcher.mqh"

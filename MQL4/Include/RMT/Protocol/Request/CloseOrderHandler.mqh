@@ -4,7 +4,7 @@
 #include <Mql/Collection/HashSet.mqh>
 
 // Local
-#include "../MessageHandler.mqh"
+#include "../../MessageHandler.mqh"
 
 /// Request:
 /// {

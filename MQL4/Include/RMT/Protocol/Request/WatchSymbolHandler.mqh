@@ -1,8 +1,8 @@
 #property strict
 
 // Local
-#include "../MessageHandler.mqh"
-#include "../TickEventWatcher.mqh"
+#include "../../MessageHandler.mqh"
+#include "../../TickEventWatcher.mqh"
 
 /// Request:
 /// {
