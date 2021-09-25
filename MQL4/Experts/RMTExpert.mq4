@@ -11,8 +11,8 @@ extern int    REP_PORT          = 32768;
 extern int    PUSH_PORT         = 32769;
 extern int    MILLISECOND_TIMER = 100;
 
-Server server(PROJECT_NAME);
-RequestProcessor request_processor;
+Server           server(PROJECT_NAME);
+RequestProcessor request_processor(server);
 
 int OnInit()
 {
@@ -36,36 +36,14 @@ void OnDeinit(const int reason)
 
 void OnTick()
 {
-    process_request();
+    request_processor.process();
     publish_symbols();
 }
 
 void OnTimer()
 {
-    process_request();
+    request_processor.process();
     publish_symbols();
-}
-
-void process_request()
-{
-    string request;
-
-    if (!server.recv_request(request))
-        return;
-
-    Print("Received request: ", request);
-
-    string response = request_processor.process(request, true);
-
-    if (response == NULL)
-    {
-        Print("Request parsing failed; no reply");
-        server.send_response("");
-        return;
-    }
-
-    Print("Sending response: ", response);
-    server.send_response(response);
 }
 
 void publish_symbols()

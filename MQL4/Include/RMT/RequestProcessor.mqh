@@ -8,23 +8,28 @@
 #include "Protocol/PlaceOrderHandler.mqh"
 #include "Protocol/WatchSymbolHandler.mqh"
 #include "MessageDispatcher.mqh"
+#include "Server.mqh"
 
 class RequestProcessor {
 public:
-    RequestProcessor();
+    RequestProcessor(Server& the_server);
     
-    /// TODO: use a logging class instead of `verbose`
-    string process(const string& request, bool verbose = false);
+    void process();
 
 private:
+    string process(const string& request);
+
+    Server*           m_server;
     MessageDispatcher m_dispatcher;
 };
 
 //===========================================================================
 // --- RequestProcessor implementation ---
 //===========================================================================
-RequestProcessor::RequestProcessor()
+RequestProcessor::RequestProcessor(Server& the_server)
 {
+    m_server = GetPointer(the_server);
+
     m_dispatcher.set_fallback_handler(new InvalidCommandHandler());
     m_dispatcher.set_handler("watch_symbol", new WatchSymbolHandler());
     m_dispatcher.set_handler("get_tick",     new GetTickHandler());
@@ -33,15 +38,35 @@ RequestProcessor::RequestProcessor()
     m_dispatcher.set_handler("close_order",  new CloseOrderHandler());
 }
 
-string RequestProcessor::process(const string& request, bool verbose)
+void RequestProcessor::process()
+{
+    string request;
+
+    if (!server.recv_request(request))
+        return;
+
+    Print("Received request: ", request);
+
+    string response = process(request);
+
+    if (response == NULL)
+    {
+        Print("Request parsing failed; no reply");
+        server.send_response("");
+        return;
+    }
+
+    Print("Sending response: ", response);
+    server.send_response(response);
+}
+
+string RequestProcessor::process(const string& request)
 {
     const JsonValue json_request = JsonValue::deserialize(request);
 
     if (!json_request)
     {
-        if (verbose)
-            Print("Failed to deserialize request");
-
+        Print("Failed to deserialize request");
         return NULL;
     }
     
@@ -49,9 +74,7 @@ string RequestProcessor::process(const string& request, bool verbose)
 
     if (!json_cmd)
     {
-        if (verbose)
-            Print("Request is missing key 'cmd'");
-
+        Print("Request is missing key 'cmd'");
         return NULL;
     }
 
@@ -60,9 +83,7 @@ string RequestProcessor::process(const string& request, bool verbose)
 
     if (!ok)
     {
-        if (verbose)
-            Print("Invalid type for key 'cmd' (expected string)");
-            
+        Print("Invalid type for key 'cmd' (expected string)");
         return NULL;
     }
     
@@ -70,17 +91,13 @@ string RequestProcessor::process(const string& request, bool verbose)
     
     if (!request_msg)
     {
-        if (verbose)
-            Print("Request is missing key 'msg'");
-            
+        Print("Request is missing key 'msg'");
         return NULL;
     }
    
     if (request_msg.type() != JSON_OBJECT)
     {
-        if (verbose)
-            Print("Invalid type for key 'msg' (expected object)");
-            
+        Print("Invalid type for key 'msg' (expected object)");
         return NULL;
     }
     
