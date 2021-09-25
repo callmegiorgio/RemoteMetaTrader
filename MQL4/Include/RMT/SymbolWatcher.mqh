@@ -24,6 +24,8 @@ public:
     
     int get_ticks(SymbolTick& ticks[]);
 
+    void update(const SymbolTick& ticks[]);
+
 private:
     static SymbolWatcher s_instance;
 
@@ -82,8 +84,6 @@ int SymbolWatcher::get_ticks(SymbolTick& ticks[])
     {
         if (SymbolInfoTick(symbol, last_tick) && last_tick.time != timestamp)
         {
-            m_timestamps.set(symbol, last_tick.time);
-            
             ticks_count++;
                        
             if (ArrayResize(ticks, ticks_count) != ticks_count)
@@ -95,4 +95,12 @@ int SymbolWatcher::get_ticks(SymbolTick& ticks[])
     }
     
     return ticks_count;
+}
+
+void SymbolWatcher::update(const SymbolTick& ticks[])
+{
+    const int ticks_count = ArraySize(ticks);
+
+    for (int i = 0; i < ticks_count; i++)
+        m_timestamps.set(ticks[i].symbol, ticks[i].mql_tick.time);
 }

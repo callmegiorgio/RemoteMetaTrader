@@ -170,20 +170,16 @@ bool Server::send_ticks(const string& messages[])
         return true;
 
     const int last_index = (n - 1);
-    bool finished_with_failure = false;
 
     for (int i = 0; i < last_index; i++)
     {
         if (!m_push_socket.send(messages[i], ZMQ_SNDMORE))
-            finished_with_failure = true;
-        
-        Print("sending tick msg: ", messages[i]);
+            break;
+
+        Print("preparing to send tick msg: ", messages[i]);
     }
 
-    if (!m_push_socket.send(messages[last_index], ZMQ_DONTWAIT))
-        finished_with_failure = true;
-    
-    Print("sending tick msg: ", messages[last_index]);
+    Print("preparing to send tick msg: ", messages[last_index]);
 
-    return finished_with_failure;
+    return m_push_socket.send(messages[last_index], ZMQ_DONTWAIT);
 }

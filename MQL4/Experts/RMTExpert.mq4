@@ -70,8 +70,14 @@ void process_request()
 
 void publish_symbols()
 {
+    SymbolWatcher* symbol_watcher = SymbolWatcher::instance();
+
     SymbolTick ticks[];
-    const int ticks_count = SymbolWatcher::instance().get_ticks(ticks);
+    const int ticks_count = symbol_watcher.get_ticks(ticks);
+
+    if (ticks_count == 0)
+        return;
+
     string messages[];
 
     if (ArrayResize(messages, ticks_count) != ticks_count)
@@ -93,5 +99,11 @@ void publish_symbols()
         messages[i] = csv_msg;
     }
 
-    server.send_ticks(messages);
+    if (!server.send_ticks(messages))
+    {
+        Print("failed to send tick messages");
+        return;
+    }
+
+    symbol_watcher.update(ticks);
 }
