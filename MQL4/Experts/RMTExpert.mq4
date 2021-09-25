@@ -14,31 +14,20 @@ extern int    MILLISECOND_TIMER = 100;
 Server server(PROJECT_NAME);
 RequestProcessor request_processor;
 
-//+------------------------------------------------------------------+
-//| Expert initialization function                                   |
-//+------------------------------------------------------------------+
 int OnInit()
 {
     // `OnTimer()` is not called while testing.
     if (!IsTesting())
         EventSetMillisecondTimer(MILLISECOND_TIMER);
-    
-    Print("binding server to REP socket on port ", REP_PORT, "...");
-    Print("binding server to PUSH socket on port ", PUSH_PORT, "...");
 
-    server.run(PROTOCOL, HOSTNAME, REP_PORT, PUSH_PORT);
+    if (!server.run(PROTOCOL, HOSTNAME, REP_PORT, PUSH_PORT))
+        return INIT_FAILED;
 
     return INIT_SUCCEEDED;
 }
 
-//+------------------------------------------------------------------+
-//| Expert deinitialization function                                 |
-//+------------------------------------------------------------------+
 void OnDeinit(const int reason)
 {
-    Print("unbinding server from REP socket on port ", REP_PORT, "...");
-    Print("unbinding server from PUSH socket on port ", PUSH_PORT, "...");
-
     server.stop();
 
     if (!IsTesting())
@@ -59,9 +48,9 @@ void OnTimer()
 
 void process_request()
 {
-    const string request = server.read_request();
+    string request;
 
-    if (request == NULL)
+    if (!server.recv_request(request))
         return;
 
     Print("Received request: ", request);
@@ -75,16 +64,21 @@ void process_request()
         return;
     }
 
-    Print("Sending reply: ", response);
-
-    if (!server.send_response(response))
-        Print("Failed to send reply");
+    Print("Sending response: ", response);
+    server.send_response(response);
 }
 
 void publish_symbols()
 {
     SymbolTick ticks[];
     const int ticks_count = SymbolWatcher::instance().get_ticks(ticks);
+    string messages[];
+
+    if (ArrayResize(messages, ticks_count) != ticks_count)
+    {
+        Print("Failed to resize ticks array");
+        return;
+    }
     
     for (int i = 0; i < ticks_count; i++)
     {    
@@ -95,9 +89,9 @@ void publish_symbols()
                 ticks[i].mql_tick.bid,
                 ticks[i].mql_tick.ask
             );
-        
-        Print("sending tick msg: ", csv_msg);
 
-        server.send_tick(csv_msg);
+        messages[i] = csv_msg;
     }
+
+    server.send_ticks(messages);
 }
