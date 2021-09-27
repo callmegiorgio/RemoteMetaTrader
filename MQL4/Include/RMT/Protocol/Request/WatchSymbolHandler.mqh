@@ -2,7 +2,7 @@
 
 // Local
 #include "../../MessageHandler.mqh"
-#include "../../TickEventWatcher.mqh"
+#include "../../TickEventPublisher.mqh"
 
 /// Request:
 /// {
@@ -16,9 +16,9 @@
 /// }
 class WatchSymbolHandler : public MessageHandler {
 public:
-    WatchSymbolHandler(TickEventWatcher& tick_watcher)
+    WatchSymbolHandler(TickEventPublisher& tick_publisher)
     {
-        m_tick_watcher = GetPointer(tick_watcher);
+        m_tick_publisher = GetPointer(tick_publisher);
     }
 
 private:
@@ -39,17 +39,17 @@ private:
             {
                 const string s = SymbolName(i, false);
 
-                m_tick_watcher.insert(s);
+                m_tick_publisher.insert(s);
                 symbols[i] = s;
             }
 
             write_value("symbols", symbols);
         }
         else
-            m_tick_watcher.insert(symbol);
+            m_tick_publisher.insert(symbol);
 
         write_result_success();
     }
 
-    TickEventWatcher* m_tick_watcher;
+    TickEventPublisher* m_tick_publisher;
 };

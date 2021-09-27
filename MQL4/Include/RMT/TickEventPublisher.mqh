@@ -16,10 +16,10 @@ public:
 };
 
 /// Stores symbols which a client is subscribed to.
-class TickEventWatcher : private EventPublisher {
+class TickEventPublisher : private EventPublisher {
 public:
-    TickEventWatcher(Server& the_server);
-    ~TickEventWatcher();
+    TickEventPublisher(Server& the_server);
+    ~TickEventPublisher();
 
     void insert(string symbol);
     void remove(string symbol);
@@ -37,18 +37,18 @@ private:
 };
 
 //===========================================================================
-// --- TickEventWatcher implementation ---
+// --- TickEventPublisher implementation ---
 //===========================================================================
-TickEventWatcher::TickEventWatcher(Server& the_server)
+TickEventPublisher::TickEventPublisher(Server& the_server)
     : EventPublisher(the_server)
 {}
 
-TickEventWatcher::~TickEventWatcher()
+TickEventPublisher::~TickEventPublisher()
 {
     clear();
 }
 
-void TickEventWatcher::insert(string symbol)
+void TickEventPublisher::insert(string symbol)
 {
     Tick* tick = m_ticks.get(symbol, NULL);
 
@@ -63,7 +63,7 @@ void TickEventWatcher::insert(string symbol)
     m_ticks.set(symbol, tick);
 }
 
-void TickEventWatcher::remove(string symbol)
+void TickEventPublisher::remove(string symbol)
 {
     Tick* tick = m_ticks.get(symbol, NULL);
 
@@ -74,7 +74,7 @@ void TickEventWatcher::remove(string symbol)
     }
 }
 
-void TickEventWatcher::fill()
+void TickEventPublisher::fill()
 {
     const int n = SymbolsTotal(false);
                 
@@ -82,23 +82,23 @@ void TickEventWatcher::fill()
         insert(SymbolName(i, false));
 }
 
-void TickEventWatcher::clear()
+void TickEventPublisher::clear()
 {
     foreachm(string, symbol, Tick*, tick, m_ticks)
         delete tick;
 }
 
-int TickEventWatcher::size() const
+int TickEventPublisher::size() const
 {
     return m_ticks.size();
 }
 
-bool TickEventWatcher::contains(string symbol) const
+bool TickEventPublisher::contains(string symbol) const
 {
     return m_ticks.contains(symbol);
 }
 
-void TickEventWatcher::process_events()
+void TickEventPublisher::process_events()
 {
     MqlTick last_tick;
     
