@@ -4,7 +4,7 @@
 #include <Mql/Collection/HashMap.mqh>
 
 // Local
-#include "Protocol/Event/TickEvent.mqh"
+#include "../Protocol/Event/TickEvent.mqh"
 #include "EventPublisher.mqh"
 #include "Server.mqh"
 

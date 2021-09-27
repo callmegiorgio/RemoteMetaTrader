@@ -4,7 +4,7 @@
 #include <Mql/Collection/HashMap.mqh>
 
 // Local
-#include "JsonValue.mqh"
+#include "../Utility/JsonValue.mqh"
 #include "MessageHandler.mqh"
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,7 +1,7 @@
 #property strict
 
 // Local
-#include "../../MessageHandler.mqh"
+#include "../../Network/MessageHandler.mqh"
 
 class InvalidCommandHandler : public MessageHandler {
 private:

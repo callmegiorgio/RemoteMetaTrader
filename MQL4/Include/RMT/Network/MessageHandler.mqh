@@ -1,8 +1,8 @@
 #property strict
 
 // Local
-#include "JsonValue.mqh"
-#include "JsonReader.mqh"
+#include "../Utility/JsonValue.mqh"
+#include "../Utility/JsonReader.mqh"
 #include "RequestError.mqh"
 
 /// TODO

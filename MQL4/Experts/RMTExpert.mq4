@@ -1,8 +1,8 @@
 #property strict
 
-#include "../Include/RMT/Server.mqh"
-#include "../Include/RMT/RequestProcessor.mqh"
-#include "../Include/RMT/TickEventPublisher.mqh"
+#include "../Include/RMT/Network/Server.mqh"
+#include "../Include/RMT/Network/RequestProcessor.mqh"
+#include "../Include/RMT/Network/TickEventPublisher.mqh"
 
 extern string PROJECT_NAME      = "__RMT_Exp3rt_;D__";
 extern string PROTOCOL          = "tcp";
