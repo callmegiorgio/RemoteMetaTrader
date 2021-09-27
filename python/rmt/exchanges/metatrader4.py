@@ -1,20 +1,12 @@
 import zmq
 import json
 import logging
-from enum     import IntEnum
 from datetime import datetime, timedelta, timezone
-from typing   import List, Optional, Set, Tuple
+from typing   import List, Optional, Set, Tuple, Type
 from time     import sleep
 from rmt      import (jsonutil, error, Order, Side, OrderType,
                       Exchange, Tick, Bar, OrderStatus)
-
-class OperationCode(IntEnum):
-    BUY        = 0
-    SELL       = 1
-    BUY_LIMIT  = 2
-    SELL_LIMIT = 3
-    BUY_STOP   = 4
-    SELL_STOP  = 5
+from . import mt4
 
 class MetaTrader4(Exchange):
     """Bindings for executing market operations on MetaTrader 4."""
@@ -58,96 +50,36 @@ class MetaTrader4(Exchange):
         self._sub_socket.close()
 
     def get_tick(self, symbol: str) -> Tick:
-        request = {
-            'cmd': 'get_tick',
-            'msg': {
-                'symbol': symbol
-            }
-        }
-
-        response = self._send_request_and_get_response(request)
-
-        server_time = jsonutil.read_required(response, 'server_time', int)
-        bid         = jsonutil.read_required(response, 'bid',         float)
-        ask         = jsonutil.read_required(response, 'ask',         float)
-
-        tick = Tick(
-            server_time = datetime.fromtimestamp(server_time, timezone.utc),
-            bid = bid,
-            ask = ask
-        )
-
-        return tick
+        request  = mt4.requests.GetTickRequest(symbol)
+        response = mt4.responses.GetTickResponse(self._send_request_and_get_response(request))
+        
+        return response.tick()
 
     def get_bars(self,
                  symbol: str,
                  start_time: Optional[datetime] = None,
                  end_time: Optional[datetime] = None
     ) -> List[Bar]:
-        request = {
-            'cmd': 'get_bars',
-            'msg': {
-                'symbol': symbol
-            }
-        }
-
-        if isinstance(start_time, datetime):
-            request['msg']['start_time'] = int(start_time.timestamp())
+        request  = mt4.requests.GetBarsRequest(symbol, start_time, end_time)
+        response = mt4.responses.GetBarsResponse(self._send_request_and_get_response(request))
         
-        if isinstance(end_time, datetime):
-            request['msg']['end_time'] = int(end_time.timestamp())
-        
-        response = self._send_request_and_get_response(request)
-
-        bars_array = jsonutil.read_required(response, 'bars', list)
-        bars = []
-
-        for bar_subarr in bars_array:
-            t = jsonutil.read_required(bar_subarr, 0, int)
-            o = jsonutil.read_required(bar_subarr, 1, float)
-            h = jsonutil.read_required(bar_subarr, 2, float)
-            l = jsonutil.read_required(bar_subarr, 3, float)
-            c = jsonutil.read_required(bar_subarr, 4, float)
-
-            bars.append(
-                Bar(
-                    time  = datetime.fromtimestamp(t, timezone.utc),
-                    open  = o,
-                    high  = h,
-                    low   = l,
-                    close = c
-                )
-            )
-        
-        return bars
+        return response.bars()
 
     def subscribe(self, symbol: str):
         if symbol in self._subscribed_symbols:
             return
 
-        request = {
-            'cmd': 'watch_symbol',
-            'msg': {
-                'symbol': symbol
-            }
-        }
-
+        request = mt4.requests.WatchSymbolRequest(symbol)
         self._send_request_and_get_response(request)
+
         self._sub_socket.subscribe('tick:' + symbol)
         self._subscribed_symbols.add(symbol)
 
     def subscribe_all(self):
-        request = {
-            'cmd': 'watch_symbol',
-            'msg': {
-                'symbol': '*'
-            }
-        }
-
-        response = self._send_request_and_get_response(request)
-        symbols = jsonutil.read_required_key(response, 'symbols', List)
-
-        for symbol in symbols:
+        request  = mt4.requests.WatchSymbolRequest('*')
+        response = mt4.responses.WatchSymbolResponse(self._send_request_and_get_response(request))
+        
+        for symbol in response.symbols():
             if isinstance(symbol, str):
                 self._sub_socket.subscribe('tick:' + symbol)
                 self._subscribed_symbols.add(symbol)
@@ -180,9 +112,9 @@ class MetaTrader4(Exchange):
         opcode = None
 
         if side == Side.BUY:
-            opcode = OperationCode.BUY
+            opcode = mt4.OperationCode.BUY
         elif side == Side.SELL:
-            opcode = OperationCode.SELL
+            opcode = mt4.OperationCode.SELL
         else:
             raise ValueError('invalid Side value %s' % side.value)
 
@@ -216,9 +148,9 @@ class MetaTrader4(Exchange):
         opcode = None
 
         if side == Side.BUY:
-            opcode = OperationCode.BUY_LIMIT
+            opcode = mt4.OperationCode.BUY_LIMIT
         elif side == Side.SELL:
-            opcode = OperationCode.SELL_LIMIT
+            opcode = mt4.OperationCode.SELL_LIMIT
         else:
             raise ValueError('invalid Side value %s' % side.value)
 
@@ -252,9 +184,9 @@ class MetaTrader4(Exchange):
         opcode = None
 
         if side == Side.BUY:
-            opcode = OperationCode.BUY_STOP
+            opcode = mt4.OperationCode.BUY_STOP
         elif side == Side.SELL:
-            opcode = OperationCode.SELL_STOP
+            opcode = mt4.OperationCode.SELL_STOP
         else:
             raise ValueError('invalid Side value %s' % side.value)
 
@@ -298,58 +230,50 @@ class MetaTrader4(Exchange):
         if lots is None:
             lots = order.lots()
 
-        request = {
-            'cmd': 'close_order',
-            'msg': {
-                'ticket':   int(order.ticket()),
-                'lots':     float(lots),
-                'price':    float(price),
-                'slippage': int(slippage)
-            }
-        }
+        request  = mt4.requests.CloseOrderRequest(order.ticket(), float(price), int(slippage), float(lots))
+        response = mt4.responses.CloseOrderResponse(self._send_request_and_get_response(request))
 
-        response = self._send_request_and_get_response(request)
+        order._status      = OrderStatus.CLOSED
+        order._lots        = response.lots()
+        order._close_price = response.close_price()
+        order._close_time  = response.close_time()
+        order._comment     = response.comment()
+        order._commission  = response.commission()
+        order._profit      = response.profit()
+        order._swap        = response.swap()
 
-        order._close_price = jsonutil.read_optional(response, 'cp',         float)
-        close_utcts        = jsonutil.read_optional(response, 'ct',         int)
-        order._lots        = jsonutil.read_optional(response, 'lots',       float)
-        order._comment     = jsonutil.read_optional(response, 'comment',    str)
-        order._commission  = jsonutil.read_optional(response, 'commission', float)
-        order._profit      = jsonutil.read_optional(response, 'profit',     float)
-        order._swap        = jsonutil.read_optional(response, 'swap',       float)
+        #TODO: implement a specific function for partial close
+        return None
 
-        order._close_time = datetime.fromtimestamp(close_utcts, timezone.utc)
-        order._status     = OrderStatus.CLOSED
+        # rem_order = jsonutil.read_optional(response, 'remaining_order', dict)
 
-        rem_order = jsonutil.read_optional(response, 'remaining_order', dict)
-
-        if len(rem_order) == 0:
-            return None
+        # if len(rem_order) == 0:
+        #     return None
         
-        rem_order_ticket     = jsonutil.read_required(rem_order, 'ticket',     int)
-        rem_order_lots       = jsonutil.read_required(rem_order, 'lots',       float)
-        rem_order_comment    = jsonutil.read_required(rem_order, 'comment',    str)
-        rem_order_commission = jsonutil.read_required(rem_order, 'commission', float)
-        rem_order_profit     = jsonutil.read_required(rem_order, 'profit',     float)
-        rem_order_swap       = jsonutil.read_required(rem_order, 'swap',       float)
+        # rem_order_ticket     = jsonutil.read_required(rem_order, 'ticket',     int)
+        # rem_order_lots       = jsonutil.read_required(rem_order, 'lots',       float)
+        # rem_order_comment    = jsonutil.read_required(rem_order, 'comment',    str)
+        # rem_order_commission = jsonutil.read_required(rem_order, 'commission', float)
+        # rem_order_profit     = jsonutil.read_required(rem_order, 'profit',     float)
+        # rem_order_swap       = jsonutil.read_required(rem_order, 'swap',       float)
 
-        return Order(
-            ticket       = rem_order_ticket,
-            symbol       = order.symbol(),
-            side         = order.side(),
-            type         = order.type(),
-            lots         = rem_order_lots,
-            status       = OrderStatus.FILLED,
-            open_price   = order.open_price(),
-            open_time    = order.open_time(),
-            stop_loss    = order.stop_loss(),
-            take_profit  = order.take_profit(),
-            magic_number = order.magic_number(),
-            comment      = rem_order_comment,
-            commission   = rem_order_commission,
-            profit       = rem_order_profit,
-            swap         = rem_order_swap
-        )
+        # return Order(
+        #     ticket       = rem_order_ticket,
+        #     symbol       = order.symbol(),
+        #     side         = order.side(),
+        #     type         = order.type(),
+        #     lots         = rem_order_lots,
+        #     status       = OrderStatus.FILLED,
+        #     open_price   = order.open_price(),
+        #     open_time    = order.open_time(),
+        #     stop_loss    = order.stop_loss(),
+        #     take_profit  = order.take_profit(),
+        #     magic_number = order.magic_number(),
+        #     comment      = rem_order_comment,
+        #     commission   = rem_order_commission,
+        #     profit       = rem_order_profit,
+        #     swap         = rem_order_swap
+        # )
 
     def modify_order(self,
                      order: Order,
@@ -358,22 +282,24 @@ class MetaTrader4(Exchange):
                      price: Optional[float] = None,
                      expiration: Optional[datetime] = None
     ):
-        if order.is_pending():
-            price = order.open_price()
-            expiration = order.expiration()
+        # TODO
+        pass
+        # if order.is_pending():
+        #     price = order.open_price()
+        #     expiration = order.expiration()
 
-        request = {
-            'cmd': 'modify_order',
-            'msg': {
-                'ticket':     order.ticket(),
-                'price':      float(price),
-                'stoploss':   float(stop_loss),
-                'takeprofit': float(take_profit),
-                'expiration': int(expiration.timestamp())
-            }
-        }
+        # request = {
+        #     'cmd': 'modify_order',
+        #     'msg': {
+        #         'ticket':     order.ticket(),
+        #         'price':      float(price),
+        #         'stoploss':   float(stop_loss),
+        #         'takeprofit': float(take_profit),
+        #         'expiration': int(expiration.timestamp())
+        #     }
+        # }
 
-        self._send_request_and_get_response(request)
+        # self._send_request_and_get_response(request)
 
     def process_events(self):
         while True:
@@ -394,7 +320,7 @@ class MetaTrader4(Exchange):
     def _place_order(self,
                      symbol: str,
                      side: Side,
-                     opcode: OperationCode,
+                     opcode: mt4.OperationCode,
                      lots: float,
                      price: float,
                      slippage: float,
@@ -404,7 +330,7 @@ class MetaTrader4(Exchange):
                      magic_number: Optional[int],
                      expiration: Optional[datetime]
     ):
-        response = self._send_order_request_and_get_response(
+        request = mt4.requests.PlaceOrderRequest(
             symbol,
             opcode,
             lots,
@@ -417,90 +343,42 @@ class MetaTrader4(Exchange):
             expiration
         )
 
-        ticket = jsonutil.read_required(response, 'ticket', int)
-        
-        open_price = price
-        status = OrderStatus.FILLED
+        response = mt4.responses.PlaceOrderResponse(self._send_request_and_get_response(request))
 
-        if opcode == OperationCode.BUY or opcode == OperationCode.SELL:
+        open_price = price
+        status     = OrderStatus.FILLED
+
+        if opcode in [mt4.OperationCode.BUY, mt4.OperationCode.SELL]:
             # A market order may return its open price, since it is filled right away.
-            open_price = jsonutil.read_optional(response, 'op', float)
+            open_price = response.open_price()
         else:
             # A pending order may return its lots, since it may be partially filled.
-            actual_lots = jsonutil.read_optional(response, 'lots', float)
+            actual_lots = response.lots()
 
             if actual_lots != float(0) and actual_lots != lots:
                 status = OrderStatus.PARTIALLY_FILLED
 
-        open_timestamp = jsonutil.read_optional(response, 'ot',         int)
-        commission     = jsonutil.read_optional(response, 'commission', float)
-        profit         = jsonutil.read_optional(response, 'profit',     float)
-        swap           = jsonutil.read_optional(response, 'swap',       float)
-
         order = Order(
-            ticket       = ticket,
+            ticket       = response.ticket(),
             symbol       = symbol,
             side         = side,
             type         = OrderType.MARKET_ORDER,
             lots         = lots,
             status       = status,
             open_price   = open_price,
-            open_time    = datetime.fromtimestamp(open_timestamp, timezone.utc),
+            open_time    = response.open_time(),
             stop_loss    = stop_loss,
             take_profit  = take_profit,
             magic_number = magic_number,
             comment      = comment,
-            commission   = commission,
-            profit       = profit,
-            swap         = swap
+            commission   = response.commission(),
+            profit       = response.profit(),
+            swap         = response.swap()
         )
 
         #TODO: add order to track later
 
         return order 
-
-    def _send_order_request_and_get_response(
-        self,
-        symbol: str,
-        opcode: OperationCode,
-        lots: float,
-        price: float,
-        slippage: int,
-        stop_loss: float,
-        take_profit: float,
-        comment: str,
-        magic_number: int,
-        expiration: Optional[datetime] = None
-    ):
-        request = {
-            'cmd': 'place_order',
-            'msg': {
-                'symbol': symbol,
-                'opcode': opcode.value,
-                'lots':   lots,
-                'price':  price
-            }
-        }
-
-        if slippage != 0:
-            request['msg']['slippage'] = slippage
-
-        if stop_loss != 0.0:
-            request['msg']['sl'] = stop_loss
-        
-        if take_profit != 0.0:
-            request['msg']['tp'] = take_profit
-
-        if comment != '':
-            request['msg']['comment'] = comment
-
-        if magic_number != 0:
-            request['msg']['magic'] = magic_number
-        
-        if isinstance(expiration, datetime):
-            request['msg']['expiration'] = int(expiration.timestamp())
-
-        return self._send_request_and_get_response(request)
 
     def _wait_response_until(self, timeout_dt: datetime) -> str:
         """Receives a string response from the REQ socket.
@@ -536,46 +414,23 @@ class MetaTrader4(Exchange):
         Breaks down the content of a `str` response into a `dict` object.
         """
 
-        response = json.loads(response)
+    def _send_request_and_get_response(self, request: str) -> str:
 
-        if not isinstance(response, dict):
-            raise error.InvalidResponse('response of request is not of type JSON object')
-
-        result = jsonutil.read_required(response, 'result', int)
-
-        param = response.get('param', '')
-
-        result = error.ErrorCode(result)
-
-        if result == error.ErrorCode.NO_ERROR or result == error.ErrorCode.NO_MQLERROR:
-            return response
-        elif result == error.ErrorCode.USER_UNKNOWN_COMMAND:
-            raise error.UnknownServerCommand(cmd)
-        elif result == error.ErrorCode.USER_MISSING_REQUIRED_PARAM:
-            raise error.MissingRequiredParameter(cmd, param)
-        elif result == error.ErrorCode.USER_INVALID_PARAMETER_TYPE:
-            raise error.InvalidParameterType(cmd, param)
-        elif result == error.ErrorCode.USER_INVALID_PARAMETER_VALUE:
-            raise error.InvalidParameterValue(cmd, param)
-        else: # any(result == ec.value for ec in error.ErrorCode):
-            raise error.ExecutionError(cmd, result)
-
-    def _send_request_and_get_response(self, request: dict) -> dict:
         self._send_request(request)
         self._logger.debug('Sent request: %s', request)
 
-        response = self._parse_response(request['cmd'], self._wait_response_for(60000))
+        response = self._wait_response_for(60000)
         self._logger.debug('Received response: %s', response)
 
         return response
     
-    def _send_request(self, _dict):
+    def _send_request(self, request: mt4.requests.Request):
         """
         Sends commands through the PUSH socket.
         """
 
         try:
-            self._req_socket.send_string(json.dumps(_dict), zmq.DONTWAIT)
+            self._req_socket.send_string(request.serialize(), zmq.DONTWAIT)
         except zmq.error.Again:
             sleep(0.000000001)
             raise error.Again()
