@@ -8,10 +8,18 @@
 #include "EventPublisher.mqh"
 #include "Server.mqh"
 
+class Tick {
+public:
+    datetime server_time;
+    double bid;
+    double ask;
+};
+
 /// Stores symbols which a client is subscribed to.
 class TickEventWatcher : private EventPublisher {
 public:
     TickEventWatcher(Server& the_server);
+    ~TickEventWatcher();
 
     void insert(string symbol);
     void remove(string symbol);
@@ -25,7 +33,7 @@ public:
     void process_events();
 
 private:
-    HashMap<string, datetime> m_timestamps;
+    HashMap<string, Tick*> m_ticks;
 };
 
 //===========================================================================
@@ -35,14 +43,35 @@ TickEventWatcher::TickEventWatcher(Server& the_server)
     : EventPublisher(the_server)
 {}
 
+TickEventWatcher::~TickEventWatcher()
+{
+    clear();
+}
+
 void TickEventWatcher::insert(string symbol)
 {
-    m_timestamps.set(symbol, m_timestamps.get(symbol, 0));
+    Tick* tick = m_ticks.get(symbol, NULL);
+
+    if (tick != NULL)
+        return;
+
+    tick = new Tick;
+    tick.server_time = datetime(0);
+    tick.bid         = double(0);
+    tick.ask         = double(0);
+
+    m_ticks.set(symbol, tick);
 }
 
 void TickEventWatcher::remove(string symbol)
 {
-    m_timestamps.remove(symbol);
+    Tick* tick = m_ticks.get(symbol, NULL);
+
+    if (tick != NULL)
+    {
+        delete tick;
+        m_ticks.remove(symbol);
+    }
 }
 
 void TickEventWatcher::fill()
@@ -55,24 +84,25 @@ void TickEventWatcher::fill()
 
 void TickEventWatcher::clear()
 {
-    m_timestamps.clear();
+    foreachm(string, symbol, Tick*, tick, m_ticks)
+        delete tick;
 }
 
 int TickEventWatcher::size() const
 {
-    return m_timestamps.size();
+    return m_ticks.size();
 }
 
 bool TickEventWatcher::contains(string symbol) const
 {
-    return m_timestamps.contains(symbol);
+    return m_ticks.contains(symbol);
 }
 
 void TickEventWatcher::process_events()
 {
     MqlTick last_tick;
     
-    foreachm(string, symbol, datetime, timestamp, m_timestamps)
+    foreachm(string, symbol, Tick*, tick, m_ticks)
     {
         if (!SymbolSelect(symbol, true))
             continue;
@@ -80,7 +110,9 @@ void TickEventWatcher::process_events()
         if (!SymbolInfoTick(symbol, last_tick))
             continue;
         
-        if (last_tick.time == timestamp)
+        if (last_tick.time == tick.server_time && 
+            last_tick.bid  == tick.bid &&
+            last_tick.ask  == tick.ask)
             continue;
         
         TickEvent ev;
@@ -88,6 +120,10 @@ void TickEventWatcher::process_events()
         ev.tick   = last_tick;
 
         if (publish(ev))
-            m_timestamps.set(symbol, last_tick.time);
+        {
+            tick.server_time = last_tick.time;
+            tick.bid         = last_tick.bid;
+            tick.ask         = last_tick.ask;
+        }
     }
 }
