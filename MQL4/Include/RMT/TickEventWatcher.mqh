@@ -74,6 +74,9 @@ void TickEventWatcher::process_events()
     
     foreachm(string, symbol, datetime, timestamp, m_timestamps)
     {
+        if (!SymbolSelect(symbol, true))
+            continue;
+
         if (!SymbolInfoTick(symbol, last_tick))
             continue;
         
