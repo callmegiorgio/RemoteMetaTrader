@@ -102,7 +102,7 @@ class MetaTrader4(Exchange):
                            symbol: str,
                            side: Side,
                            lots: float,
-                           price: float,
+                           price: float = 0,
                            slippage: int = 0,
                            stop_loss: float = 0,
                            take_profit: float = 0,

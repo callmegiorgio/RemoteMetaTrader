@@ -190,7 +190,7 @@ class Exchange(QObject):
                            symbol: str,
                            side: Side,
                            lots: float,
-                           price: float,
+                           price: float = 0,
                            slippage: int = 0,
                            stop_loss: float = 0,
                            take_profit: float = 0,
@@ -224,11 +224,11 @@ class Exchange(QObject):
         lots : float
             Order quantity in units of the instrument.
 
-        price : float
-            Price at which order is filled.
+        price : float, optional
+            Price at which order is filled. (default: market price)
 
-        slippage : int
-            Maximum price slippage.
+        slippage : int, optional
+            Maximum price slippage. (default: 0)
         
         stop_loss : float, optional
             Stop loss price.

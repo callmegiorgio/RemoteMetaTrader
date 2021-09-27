@@ -24,6 +24,9 @@ class PlaceOrderRequest(Request):
         if symbol == '':
             raise ValueError('symbol must not be empty')
 
+        if price == 0 and (opcode not in [OperationCode.BUY, OperationCode.SELL]):
+            raise ValueError('pending order price cannot be zero')
+
         self._symbol       = symbol
         self._opcode       = opcode
         self._lots         = lots
@@ -39,9 +42,11 @@ class PlaceOrderRequest(Request):
         msg = {
             'symbol': self._symbol,
             'opcode': self._opcode.value,
-            'lots':   self._lots,
-            'price':  self._price
+            'lots':   self._lots
         }
+
+        if self._price != 0:
+            msg['price'] = self._price
 
         if self._slippage != 0:
             msg['slippage'] = self._slippage
