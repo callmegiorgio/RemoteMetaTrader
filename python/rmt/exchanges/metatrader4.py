@@ -120,7 +120,6 @@ class MetaTrader4(Exchange):
 
         order = self._place_order(
             symbol       = str(symbol),
-            side         = side,
             opcode       = opcode,
             lots         = float(lots),
             price        = float(price),
@@ -156,7 +155,6 @@ class MetaTrader4(Exchange):
 
         order = self._place_order(
             symbol       = str(symbol),
-            side         = side,
             opcode       = opcode,
             lots         = float(lots),
             price        = float(price),
@@ -192,7 +190,6 @@ class MetaTrader4(Exchange):
 
         order = self._place_order(
             symbol       = str(symbol),
-            side         = side,
             opcode       = opcode,
             lots         = float(lots),
             price        = float(price),
@@ -309,7 +306,6 @@ class MetaTrader4(Exchange):
     #===============================================================================
     def _place_order(self,
                      symbol: str,
-                     side: Side,
                      opcode: mt4.OperationCode,
                      lots: float,
                      price: float,
@@ -335,18 +331,31 @@ class MetaTrader4(Exchange):
 
         response = mt4.responses.PlaceOrderResponse(self._send_request(request))
 
-        open_price = price
-        status     = OrderStatus.FILLED
+        side       = None
+        type       = None
+        open_price = None
+        status     = None
 
         if opcode in [mt4.OperationCode.BUY, mt4.OperationCode.SELL]:
-            # A market order may return its open price, since it is filled right away.
-            open_price = response.open_price()
-        else:
-            # A pending order may return its lots, since it may be partially filled.
-            actual_lots = response.lots()
+            side        = Side.BUY if opcode == mt4.OperationCode.BUY else Side.SELL
+            type        = OrderType.MARKET_ORDER
+            open_price  = response.open_price()
 
-            if actual_lots != float(0) and actual_lots != lots:
+            if response.lots() == lots:
+                status = OrderStatus.FILLED
+            else:
                 status = OrderStatus.PARTIALLY_FILLED
+                lots   = response.lots()
+        else:
+            if opcode in [mt4.OperationCode.BUY_LIMIT, mt4.OperationCode.SELL_LIMIT]:
+                side = Side.BUY if opcode == mt4.OperationCode.BUY_LIMIT else Side.SELL
+                type = OrderType.LIMIT_ORDER
+            else:
+                side = Side.BUY if opcode == mt4.OperationCode.BUY_STOP else Side.SELL
+                type = OrderType.STOP_ORDER
+
+            open_price  = price
+            status      = OrderStatus.PENDING
 
         order = Order(
             ticket       = response.ticket(),

@@ -54,9 +54,8 @@ private:
 
             if (is_market_order)
                 write_value("op", OrderOpenPrice());
-            else
-                write_value("lots", OrderLots());
 
+            write_value("lots",       OrderLots());
             write_value("ot",         OrderOpenTime());
             write_value("commission", OrderCommission());
             write_value("profit",     OrderProfit());
