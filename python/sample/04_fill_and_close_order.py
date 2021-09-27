@@ -13,7 +13,7 @@ class MyStrategy(rmt.Strategy):
         print(symbol, server_time, bid, ask)
         
         if self._last_order is None:
-            self._last_order = exchange.place_market_order(symbol, rmt.Side.BUY, 1, ask, 100)
+            self._last_order = exchange.place_market_order(symbol, rmt.Side.BUY, 1)
             print('filled order:', self._last_order)
         elif self._last_order.status() == rmt.OrderStatus.FILLED:
             exchange.close_order(self._last_order)
