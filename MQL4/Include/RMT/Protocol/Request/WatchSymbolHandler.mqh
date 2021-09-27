@@ -6,8 +6,7 @@
 
 /// Request:
 /// {
-///   "symbol": string,
-///   "should_watch": bool
+///   "symbol": string
 /// }
 ///
 /// Response:
@@ -26,25 +25,28 @@ private:
     void process() override
     {
         string symbol;
-        bool should_watch;
         
-        if (!read_required("symbol",       symbol))       return;
-        if (!read_required("should_watch", should_watch)) return;
+        if (!read_required("symbol", symbol))
+            return;
         
-        if (should_watch)
+        if (symbol == "*")
         {
-            if (symbol == "*")
-                m_tick_watcher.fill();
-            else
-                m_tick_watcher.insert(symbol);
+            const int n = SymbolsTotal(false);
+
+            JsonValue symbols;
+                
+            for (int i = 0; i < n; i++)
+            {
+                const string s = SymbolName(i, false);
+
+                m_tick_watcher.insert(s);
+                symbols[i] = s;
+            }
+
+            write_value("symbols", symbols);
         }
         else
-        {
-            if (symbol == "*")
-                m_tick_watcher.clear();
-            else
-                m_tick_watcher.remove(symbol);
-        }
+            m_tick_watcher.insert(symbol);
 
         write_result_success();
     }

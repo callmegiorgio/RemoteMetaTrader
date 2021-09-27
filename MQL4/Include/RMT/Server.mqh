@@ -14,7 +14,7 @@ public:
 
     ~Server();
 
-    bool run(string protocol, string hostname, int rep_port, int push_port);
+    bool run(string protocol, string hostname, int rep_port, int pub_port);
 
     void stop();
     
@@ -22,21 +22,21 @@ public:
     bool recv_request(string& request);
     bool send_response(string response);
 
-    bool send_event(string event);
+    bool publish_event(string event);
 
 private:
     static int last_error_number();
     static string last_error_message();
 
     bool start_rep_socket(string addr);
-    bool start_push_socket(string addr);
+    bool start_pub_socket(string addr);
 
     void stop_rep_socket();
-    void stop_push_socket();
+    void stop_pub_socket();
 
     Context m_ctx;
     ServerSocket m_rep_socket;
-    ServerSocket m_push_socket;
+    ServerSocket m_pub_socket;
 };
 
 //===========================================================================
@@ -55,7 +55,7 @@ string Server::last_error_message()
 Server::Server(string shared_name)
     : m_ctx(shared_name)
     , m_rep_socket(m_ctx, ZMQ_REP)
-    , m_push_socket(m_ctx, ZMQ_PUSH)
+    , m_pub_socket(m_ctx, ZMQ_PUB)
 {
     m_ctx.setBlocky(false);
 }
@@ -72,7 +72,7 @@ bool Server::run(string protocol, string hostname, int rep_port, int push_port)
     const string rep_addr = StringFormat("%s://%s:%d", protocol, hostname, rep_port);
     const string push_addr = StringFormat("%s://%s:%d", protocol, hostname, push_port);
 
-    return start_rep_socket(rep_addr) && start_push_socket(push_addr);
+    return start_rep_socket(rep_addr) && start_pub_socket(push_addr);
 }
 
 bool Server::start_rep_socket(string addr)
@@ -95,27 +95,26 @@ bool Server::start_rep_socket(string addr)
         return false;
     }
 
-    Print("Listening for incoming requests on (REP) socket: ", addr);
+    Print("Listening for incoming requests on (REP) socket: ", m_rep_socket.address());
     return true;
 }
 
-bool Server::start_push_socket(string addr)
+bool Server::start_pub_socket(string addr)
 {
-    if (!m_push_socket.bind(addr))
+    if (!m_pub_socket.bind(addr))
     {
-        PrintFormat("Could not bind (PUSH) socket to address '%s': %s", addr, last_error_message());
+        PrintFormat("Could not bind (PUB) socket to address '%s': %s", addr, last_error_message());
         return false;
     }
 
-    Print("Ready to send messages on (PUSH) socket: ", addr);
-
+    Print("Ready to send events on (PUB) socket: ", m_pub_socket.address());
     return true;
 }
 
 void Server::stop()
 {
     stop_rep_socket();
-    stop_push_socket();
+    stop_pub_socket();
 }
 
 void Server::stop_rep_socket()
@@ -129,14 +128,14 @@ void Server::stop_rep_socket()
         Print("Failed to unbind (REP) socket: ", last_error_message());
 }
 
-void Server::stop_push_socket()
+void Server::stop_pub_socket()
 {
-    if (!m_push_socket.is_bound())
+    if (!m_pub_socket.is_bound())
         return;
 
-    Print("Unbinding (PUSH) socket from address: ", m_push_socket.address());
+    Print("Unbinding (PUSH) socket from address: ", m_pub_socket.address());
 
-    if (!m_push_socket.unbind())
+    if (!m_pub_socket.unbind())
         Print("Failed to unbind (PUSH) socket: ", last_error_message());
 }
 
@@ -146,7 +145,7 @@ bool Server::recv_request(string& request)
         return true;
 
     if (last_error_number() != EAGAIN)
-        Print("Could not receive request from (REP) socket: ", last_error_message());
+        Print("Could not receive request on (REP) socket: ", last_error_message());
 
     return false;
 }
@@ -155,14 +154,20 @@ bool Server::send_response(string response)
 {
     if (!m_rep_socket.send(response))
     {
-        Print("Could not send response to (REP) socket: ", last_error_message());
+        Print("Could not send response on (REP) socket: ", last_error_message());
         return false;
     }
 
     return true;
 }
 
-bool Server::send_event(string event)
+bool Server::publish_event(string event)
 {
-    return m_push_socket.send(event, ZMQ_DONTWAIT);
+    if (m_pub_socket.send(event, ZMQ_DONTWAIT))
+        return true;
+
+    if (last_error_number() != EAGAIN)
+        Print("Could not publish request on (PUB) socket: ", last_error_message());
+
+    return false;
 }

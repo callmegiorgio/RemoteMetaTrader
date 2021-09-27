@@ -5,11 +5,11 @@
 
 // Local
 #include "Protocol/Event/TickEvent.mqh"
-#include "EventSender.mqh"
+#include "EventPublisher.mqh"
 #include "Server.mqh"
 
 /// Stores symbols which a client is subscribed to.
-class TickEventWatcher : private EventSender {
+class TickEventWatcher : private EventPublisher {
 public:
     TickEventWatcher(Server& the_server);
 
@@ -22,7 +22,7 @@ public:
     int size() const;
     bool contains(string symbol) const;
 
-    void notify_events();
+    void process_events();
 
 private:
     HashMap<string, datetime> m_timestamps;
@@ -32,7 +32,7 @@ private:
 // --- TickEventWatcher implementation ---
 //===========================================================================
 TickEventWatcher::TickEventWatcher(Server& the_server)
-    : EventSender(the_server)
+    : EventPublisher(the_server)
 {}
 
 void TickEventWatcher::insert(string symbol)
@@ -68,7 +68,7 @@ bool TickEventWatcher::contains(string symbol) const
     return m_timestamps.contains(symbol);
 }
 
-void TickEventWatcher::notify_events()
+void TickEventWatcher::process_events()
 {
     MqlTick last_tick;
     
@@ -84,7 +84,7 @@ void TickEventWatcher::notify_events()
         ev.symbol = symbol;
         ev.tick   = last_tick;
 
-        if (notify(ev))
+        if (publish(ev))
             m_timestamps.set(symbol, last_tick.time);
     }
 }

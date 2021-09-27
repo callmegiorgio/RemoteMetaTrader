@@ -1,20 +1,20 @@
 #property strict
 
-/// {
-///   "evt": "tick"
-///   "msg": [string, datetime, float, float]
-/// }
-
+/// Name: tick.<symbol>
+/// Body: [datetime, float, float]
 class TickEvent {
 public:
-    static string name() { return "tick"; }
-
-    bool write(JsonValue& message) const
+    string name() const
     {
-        message[0] = this.symbol;
-        message[1] = this.tick.time;
-        message[2] = this.tick.bid;
-        message[3] = this.tick.ask;
+        return "tick:" + symbol;
+    }
+
+    bool write(JsonValue& msg) const
+    {
+        msg[0] = this.tick.time;
+        msg[1] = this.tick.bid;
+        msg[2] = this.tick.ask;
+
         return true;
     }
 

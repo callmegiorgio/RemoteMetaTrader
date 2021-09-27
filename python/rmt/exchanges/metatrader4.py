@@ -1,10 +1,9 @@
 import zmq
 import json
 import logging
-import threading
 from enum     import IntEnum
 from datetime import datetime, timedelta, timezone
-from typing   import Any, Dict, List, Optional, Set
+from typing   import List, Optional, Set, Tuple
 from time     import sleep
 from rmt      import (jsonutil, error, Order, Side, OrderType,
                       Exchange, Tick, Bar, OrderStatus)
@@ -24,54 +23,39 @@ class MetaTrader4(Exchange):
                  protocol: str = 'tcp',
                  host: str = 'localhost',
                  req_port: int = 32768,
-                 pull_port: int = 32769
+                 sub_port: int = 32769
     ):
         super().__init__()
 
         ctx = zmq.Context.instance()
         self._req_socket = ctx.socket(zmq.REQ)
-        self._pull_socket = ctx.socket(zmq.PULL)
+        self._sub_socket = ctx.socket(zmq.SUB)
+        self._sub_socket.subscribe('')
 
-        self._poller = zmq.Poller()
-        self._poller.register(self._pull_socket, zmq.POLLIN)
-
-        self._subscribed_symbols: Dict[str, Optional[Tick]] = {}
-        self._subscribed_symbols_lock = threading.Lock()
-
-        self._stop_flag = threading.Event()
-        self._pull_socket_thread = threading.Thread(target=self._pull_socket_worker, daemon=True)
-
+        self._subscribed_symbols: Set[str] = set()
         self._logger = logging.getLogger(MetaTrader4.__name__)
 
-        self.connect(protocol, host, req_port, pull_port)
+        self.connect(protocol, host, req_port, sub_port)
 
     def connect(self,
                 protocol: str,
                 host: str,
                 req_port: int,
-                pull_port: int
+                sub_port: int
     ):
         addr_prefix = protocol + '://' + host + ':%s'
 
         req_addr = addr_prefix % req_port
-        pull_addr = addr_prefix % pull_port
-
-        #TODO: handle exceptions
         self._req_socket.connect(req_addr)
-        self._logger.info('Ready to send commands through (REQ) socket: %s', req_addr)
+        self._logger.info('Ready to send commands on (REQ) socket: %s', req_addr)
 
-        self._pull_socket.connect(pull_addr)
-        self._logger.info('Ready to receive quotes through (PULL) socket: %s', pull_addr)
-
-        self._stop_flag.clear()
-        self._pull_socket_thread.start()
-        self._logger.info('Started running PULL socket thread')
+        sub_addr = addr_prefix % sub_port
+        self._sub_socket.connect(sub_addr)
+        self._logger.info('Ready to receive quotes on (PULL) socket: %s', sub_addr)
 
     def disconnect(self):
-        self._stop_flag.set()
-        self._pull_socket_thread.join()
         self._req_socket.close()
-        self._pull_socket.close()
+        self._sub_socket.close()
 
     def get_tick(self, symbol: str) -> Tick:
         request = {
@@ -87,11 +71,13 @@ class MetaTrader4(Exchange):
         bid         = jsonutil.read_required(response, 'bid',         float)
         ask         = jsonutil.read_required(response, 'ask',         float)
 
-        return Tick(
+        tick = Tick(
             server_time = datetime.fromtimestamp(server_time, timezone.utc),
             bid = bid,
             ask = ask
         )
+
+        return tick
 
     def get_bars(self,
                  symbol: str,
@@ -136,74 +122,49 @@ class MetaTrader4(Exchange):
         return bars
 
     def subscribe(self, symbol: str):
-        with self._subscribed_symbols_lock:
-            if symbol in self._subscribed_symbols:
-                return
+        if symbol in self._subscribed_symbols:
+            return
 
         request = {
             'cmd': 'watch_symbol',
             'msg': {
-                'symbol': symbol,
-                'should_watch': True
+                'symbol': symbol
             }
         }
 
         self._send_request_and_get_response(request)
-
-        with self._subscribed_symbols_lock:
-            self._subscribed_symbols[symbol] = None
+        self._sub_socket.subscribe('tick:' + symbol)
+        self._subscribed_symbols.add(symbol)
 
     def subscribe_all(self):
         request = {
             'cmd': 'watch_symbol',
             'msg': {
-                'symbol': '*',
-                'should_watch': True
+                'symbol': '*'
             }
         }
 
         response = self._send_request_and_get_response(request)
-        symbols_list = jsonutil.read_required(response, 'symbols', list)
+        symbols = jsonutil.read_required_key(response, 'symbols', List)
 
-        with self._subscribed_symbols_lock:
-            for symbol in symbols_list:
-                self._subscribed_symbols[symbol] = None
+        for symbol in symbols:
+            if isinstance(symbol, str):
+                self._sub_socket.subscribe('tick:' + symbol)
+                self._subscribed_symbols.add(symbol)
 
     def unsubscribe(self, symbol: str):
-        with self._subscribed_symbols_lock:
-            if symbol not in self._subscribed_symbols:
-                return
-
-        request = {
-            'cmd': 'watch_symbol',
-            'msg': {
-                'symbol': symbol,
-                'should_watch': False
-            }
-        }
-
-        self._send_request_and_get_response(request)
-
-        with self._subscribed_symbols_lock:
-            del self._subscribed_symbols[symbol]
+        if symbol in self._subscribed_symbols:
+            self._sub_socket.unsubscribe('tick:' + symbol)
+            self._subscribed_symbols.remove(symbol)
 
     def unsubscribe_all(self):
-        request = {
-            'cmd': 'watch_symbol',
-            'msg': {
-                'symbol': '*',
-                'should_watch': False
-            }
-        }
-
-        self._send_request_and_get_response(request)
-
-        with self._subscribed_symbols_lock:
-            self._subscribed_symbols.clear()
+        for symbol in self._subscribed_symbols:
+            self._sub_socket.unsubscribe('tick' + symbol)
+        
+        self._subscribed_symbols.clear()
 
     def subscriptions(self) -> Set[str]:
-        with self._subscribed_symbols_lock:
-            return set([symbol for symbol in self._subscribed_symbols])
+        return self._subscribed_symbols.copy()
 
     def place_market_order(self,
                            symbol: str,
@@ -415,16 +376,17 @@ class MetaTrader4(Exchange):
         self._send_request_and_get_response(request)
 
     def process_events(self):
-        updated_symbols = {}
+        while True:
+            try:
+                event_msg = self._sub_socket.recv_string(zmq.DONTWAIT)
+                
+                self._logger.debug('received event message: %s', event_msg)
+                self._process_event(event_msg)
 
-        with self._subscribed_symbols_lock:
-            for symbol, tick in self._subscribed_symbols.items():
-                if tick is not None:
-                    updated_symbols[symbol] = tick
-                    self._subscribed_symbols[symbol] = None
-
-        for symbol, tick in updated_symbols.items():
-            self.tick_received.emit(symbol, tick)
+            except zmq.error.Again:
+                break
+            except (ValueError, TypeError) as e:
+                self._logger.warning('failed to read event msg: %s', e)
 
     #===============================================================================
     # Internals (U Can't Touch This)
@@ -618,58 +580,55 @@ class MetaTrader4(Exchange):
             sleep(0.000000001)
             raise error.Again()
 
-    def _pull_socket_worker(self):
-        while True:
-            events = dict(self._poller.poll(timeout=1000))
+    def _process_event(self, msg: str):
+        """Parses, validates, and notifies an event message.
 
-            if self._stop_flag.is_set():
-                break
-            
-            if self._pull_socket not in events or events[self._pull_socket] != zmq.POLLIN:
-                continue
+        Raises
+        ------
+        ValueError
+            If message name is unknown or message body is invalid.
+        
+        TypeError
+            If message body is of an invalid type or has a required value of an invalid type.
+        """
 
-            try:
-                msg = self._pull_socket.recv_string(flags=zmq.DONTWAIT)
+        msg_body_index = msg.strip().find(' ')
 
-                if msg != '':
-                    self._parse_event_message(msg)
-                
-            except zmq.error.Again:
-                pass # resource temporarily unavailable, nothing to print
-            except ValueError:
-                pass # No data returned, passing iteration.
-            except UnboundLocalError:
-                pass # _symbol may sometimes get referenced before being assigned.
+        if msg_body_index == -1:
+            raise ValueError('could not find whitespace separator in event message')
 
-    def _parse_event_message(self, event_msg: str):
-        event_dict = json.loads(event_msg)
+        msg_name = msg[0:msg_body_index]
 
-        if not isinstance(event_dict, Dict):
-            raise ValueError('event message received is not JSON object')
+        if msg_name.startswith('tick:'):
+            msg_body = msg[msg_body_index:]
+            symbol, tick = self._parse_tick_event(msg_name, msg_body)
 
-        event_name = jsonutil.read_required(event_dict, 'evt', str)
-
-        if event_name == 'tick':
-            event_msg = jsonutil.read_required(event_dict, 'msg', List)
-            self._parse_tick_event(event_msg)
+            self.tick_received.emit(symbol, tick)
         else:
-            print("received unknown event msg '%s'" % event_name)
+            raise ValueError("event message is of unknown name '%s'" % msg_name)
 
-    def _parse_tick_event(self, event_msg: List):
-        if len(event_msg) < 4:
-            raise ValueError('expected 4 elements in tick message (got: %s)' % len(event_msg))
+    def _parse_tick_event(self, msg_name: str, msg_body: str) -> Tuple[str, Tick]:
+        symbol = msg_name[len('tick:'):]
 
-        symbol    = jsonutil.read_required_index(event_msg, 0, str)
-        timestamp = jsonutil.read_required_index(event_msg, 1, int)
-        bid       = jsonutil.read_required_index(event_msg, 2, float)
-        ask       = jsonutil.read_required_index(event_msg, 3, float)
+        if symbol == '':
+            raise ValueError("missing instrument's symbol after tick message name")
+        
+        tick_array = json.loads(msg_body)
 
-        with self._subscribed_symbols_lock:
-            if symbol in self._subscribed_symbols:
-                tick = Tick(
-                    server_time = datetime.fromtimestamp(timestamp, timezone.utc),
-                    bid         = bid,
-                    ask         = ask
-                )
+        if not isinstance(tick_array, List):
+            raise TypeError("body of tick event message is of invalid type '%s' (expected: '%s')" % type(tick_array), type(List))
 
-                self._subscribed_symbols[symbol] = tick
+        if len(tick_array) != 3:
+            raise ValueError('expected 3 array elements in tick event (got: %s)' % len(tick_array))
+
+        timestamp = jsonutil.read_required_index(tick_array, 0, int)
+        bid       = jsonutil.read_required_index(tick_array, 1, float)
+        ask       = jsonutil.read_required_index(tick_array, 2, float)
+
+        tick = Tick(
+            server_time = datetime.fromtimestamp(timestamp, timezone.utc),
+            bid         = bid,
+            ask         = ask
+        )
+
+        return symbol, tick
