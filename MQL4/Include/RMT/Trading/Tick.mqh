@@ -25,17 +25,31 @@ private:
 //===========================================================================
 static bool Tick::current(string symbol, Tick& tick)
 {
-    if (!SymbolSelect(symbol, true))
-        return false;
+    if (symbol == Symbol())
+    {
+        RefreshRates();
 
-    MqlTick last_tick;
+        tick.m_server_time = TimeCurrent();
+        tick.m_bid         = Bid;
+        tick.m_ask         = Ask;
+    }
+    else
+    {
+        if (IsTesting())
+            return false;
 
-    if (!SymbolInfoTick(symbol, last_tick))
-        return false;
+        if (!SymbolSelect(symbol, true))
+            return false;
+        
+        MqlTick last_tick;
 
-    tick.m_server_time = last_tick.time;
-    tick.m_bid         = last_tick.bid;
-    tick.m_ask         = last_tick.ask;
+        if (!SymbolInfoTick(symbol, last_tick))
+            return false;
+
+        tick.m_server_time = last_tick.time;
+        tick.m_bid         = last_tick.bid;
+        tick.m_ask         = last_tick.ask;
+    }
 
     return true;
 }
