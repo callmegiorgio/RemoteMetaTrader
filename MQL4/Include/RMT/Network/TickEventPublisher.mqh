@@ -5,15 +5,9 @@
 
 // Local
 #include "../Protocol/Event/TickEvent.mqh"
+#include "../Trading/Tick.mqh"
 #include "EventPublisher.mqh"
 #include "Server.mqh"
-
-class Tick {
-public:
-    datetime server_time;
-    double bid;
-    double ask;
-};
 
 /// Stores symbols which a client is subscribed to.
 class TickEventPublisher : private EventPublisher {
@@ -52,15 +46,8 @@ void TickEventPublisher::insert(string symbol)
 {
     Tick* tick = m_ticks.get(symbol, NULL);
 
-    if (tick != NULL)
-        return;
-
-    tick = new Tick;
-    tick.server_time = datetime(0);
-    tick.bid         = double(0);
-    tick.ask         = double(0);
-
-    m_ticks.set(symbol, tick);
+    if (tick == NULL)
+        m_ticks.set(symbol, new Tick);
 }
 
 void TickEventPublisher::remove(string symbol)
@@ -100,30 +87,29 @@ bool TickEventPublisher::contains(string symbol) const
 
 void TickEventPublisher::process_events()
 {
-    MqlTick last_tick;
+    Tick last_tick;
     
     foreachm(string, symbol, Tick*, tick, m_ticks)
     {
-        if (!SymbolSelect(symbol, true))
+        if (!Tick::current(symbol, last_tick))
             continue;
 
-        if (!SymbolInfoTick(symbol, last_tick))
-            continue;
+        // if (!SymbolSelect(symbol, true))
+        //     continue;
+
+        // if (!SymbolInfoTick(symbol, last_tick))
+        //     continue;
         
-        if (last_tick.time == tick.server_time && 
-            last_tick.bid  == tick.bid &&
-            last_tick.ask  == tick.ask)
-            continue;
+        // if (last_tick.time == tick.server_time && 
+        //     last_tick.bid  == tick.bid &&
+        //     last_tick.ask  == tick.ask)
+        //     continue;
         
         TickEvent ev;
         ev.symbol = symbol;
         ev.tick   = last_tick;
 
         if (publish(ev))
-        {
-            tick.server_time = last_tick.time;
-            tick.bid         = last_tick.bid;
-            tick.ask         = last_tick.ask;
-        }
+            tick = last_tick;
     }
 }
