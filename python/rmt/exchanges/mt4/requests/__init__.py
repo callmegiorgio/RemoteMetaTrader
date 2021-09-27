@@ -5,3 +5,4 @@ from .watch_symbol        import WatchSymbolRequest
 from .place_order         import PlaceOrderRequest
 from .close_order         import CloseOrderRequest
 from .partial_close_order import PartialCloseOrderRequest
+from .modify_order        import ModifyOrderRequest

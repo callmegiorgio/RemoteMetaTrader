@@ -5,6 +5,7 @@
 #include "../Protocol/Request/GetBarsHandler.mqh"
 #include "../Protocol/Request/GetTickHandler.mqh"
 #include "../Protocol/Request/InvalidCommandHandler.mqh"
+#include "../Protocol/Request/ModifyOrderHandler.mqh"
 #include "../Protocol/Request/PartialCloseOrderHandler.mqh"
 #include "../Protocol/Request/PlaceOrderHandler.mqh"
 #include "../Protocol/Request/WatchSymbolHandler.mqh"
@@ -39,6 +40,7 @@ RequestProcessor::RequestProcessor(Server& the_server, TickEventPublisher& tick_
     m_dispatcher.set_handler("place_order",  new PlaceOrderHandler());
     m_dispatcher.set_handler("close_order",  new CloseOrderHandler());
     m_dispatcher.set_handler("pclose_order", new PartialCloseOrderHandler());
+    m_dispatcher.set_handler("modify_order", new ModifyOrderHandler());
 }
 
 void RequestProcessor::process()

@@ -51,7 +51,7 @@ class MetaTrader4(Exchange):
 
     def get_tick(self, symbol: str) -> Tick:
         request  = mt4.requests.GetTickRequest(symbol)
-        response = mt4.responses.GetTickResponse(self._send_request_and_get_response(request))
+        response = mt4.responses.GetTickResponse(self._send_request(request))
         
         return response.tick()
 
@@ -61,7 +61,7 @@ class MetaTrader4(Exchange):
                  end_time: Optional[datetime] = None
     ) -> List[Bar]:
         request  = mt4.requests.GetBarsRequest(symbol, start_time, end_time)
-        response = mt4.responses.GetBarsResponse(self._send_request_and_get_response(request))
+        response = mt4.responses.GetBarsResponse(self._send_request(request))
         
         return response.bars()
 
@@ -70,14 +70,14 @@ class MetaTrader4(Exchange):
             return
 
         request = mt4.requests.WatchSymbolRequest(symbol)
-        self._send_request_and_get_response(request)
+        self._send_request(request)
 
         self._sub_socket.subscribe('tick:' + symbol)
         self._subscribed_symbols.add(symbol)
 
     def subscribe_all(self):
         request  = mt4.requests.WatchSymbolRequest('*')
-        response = mt4.responses.WatchSymbolResponse(self._send_request_and_get_response(request))
+        response = mt4.responses.WatchSymbolResponse(self._send_request(request))
         
         for symbol in response.symbols():
             if isinstance(symbol, str):
@@ -212,7 +212,7 @@ class MetaTrader4(Exchange):
                     slippage: int = 0
     ):
         request  = mt4.requests.CloseOrderRequest(order.ticket(), float(price), int(slippage))
-        response = mt4.responses.CloseOrderResponse(self._send_request_and_get_response(request))
+        response = mt4.responses.CloseOrderResponse(self._send_request(request))
 
         order._status      = OrderStatus.CLOSED
         order._lots        = response.lots()
@@ -230,7 +230,7 @@ class MetaTrader4(Exchange):
                             slippage: int = 0
     ) -> Order:
         request  = mt4.requests.PartialCloseOrderRequest(order.ticket(), float(lots), float(price), int(slippage))
-        response = mt4.responses.PartialCloseOrderResponse(self._send_request_and_get_response(request))
+        response = mt4.responses.PartialCloseOrderResponse(self._send_request(request))
 
         order._status      = OrderStatus.CLOSED
         order._lots        = response.lots()
@@ -269,24 +269,27 @@ class MetaTrader4(Exchange):
                      price: Optional[float] = None,
                      expiration: Optional[datetime] = None
     ):
-        # TODO
-        pass
-        # if order.is_pending():
-        #     price = order.open_price()
-        #     expiration = order.expiration()
+        if order.status() not in [OrderStatus.PENDING, OrderStatus.FILLED, OrderStatus.PARTIALLY_FILLED]:
+            return
 
-        # request = {
-        #     'cmd': 'modify_order',
-        #     'msg': {
-        #         'ticket':     order.ticket(),
-        #         'price':      float(price),
-        #         'stoploss':   float(stop_loss),
-        #         'takeprofit': float(take_profit),
-        #         'expiration': int(expiration.timestamp())
-        #     }
-        # }
+        request = mt4.requests.ModifyOrderRequest(
+            order.ticket(),
+            float(stop_loss),
+            float(take_profit),
+            price,
+            expiration
+        )
 
-        # self._send_request_and_get_response(request)
+        mt4.responses.ModifyOrderResponse(self._send_request(request))
+
+        order._stop_loss   = float(stop_loss)
+        order._take_profit = float(take_profit)
+
+        if price is not None:
+            order._open_price = float(price)
+
+        if expiration is not None:
+            order._expiration = expiration
 
     def process_events(self):
         while True:
@@ -330,7 +333,7 @@ class MetaTrader4(Exchange):
             expiration
         )
 
-        response = mt4.responses.PlaceOrderResponse(self._send_request_and_get_response(request))
+        response = mt4.responses.PlaceOrderResponse(self._send_request(request))
 
         open_price = price
         status     = OrderStatus.FILLED
@@ -401,23 +404,17 @@ class MetaTrader4(Exchange):
         Breaks down the content of a `str` response into a `dict` object.
         """
 
-    def _send_request_and_get_response(self, request: str) -> str:
-
-        self._send_request(request)
-        self._logger.debug('Sent request: %s', request)
-
-        response = self._wait_response_for(60000)
-        self._logger.debug('Received response: %s', response)
-
-        return response
-    
-    def _send_request(self, request: mt4.requests.Request):
-        """
-        Sends commands through the PUSH socket.
-        """
-
+    def _send_request(self, request: mt4.requests.Request) -> str:
         try:
-            self._req_socket.send_string(request.serialize(), zmq.DONTWAIT)
+            request_msg = request.serialize()
+
+            self._req_socket.send_string(request_msg, zmq.DONTWAIT)
+            self._logger.debug('Sent request: %s', request_msg)
+
+            response = self._wait_response_for(60000)
+            self._logger.debug('Received response: %s', response)
+
+            return response
         except zmq.error.Again:
             sleep(0.000000001)
             raise error.Again()

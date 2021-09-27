@@ -292,6 +292,15 @@ class Exchange(QObject):
     ) -> Order:
         raise NotImplementedError(self.place_limit_order.__name__)
 
+    def modify_order(self,
+                     order: Order,
+                     stop_loss: float,
+                     take_profit: float,
+                     price: Optional[float] = None,
+                     expiration: Optional[datetime] = None
+    ):
+        raise NotImplementedError(self.modify_order.__name__)
+
     def close_order(self,
                     order: Order,
                     price: float = 0,

@@ -5,3 +5,4 @@ from .watch_symbol        import WatchSymbolResponse
 from .place_order         import PlaceOrderResponse
 from .close_order         import CloseOrderResponse
 from .partial_close_order import PartialCloseOrderResponse
+from .modify_order        import ModifyOrderResponse
