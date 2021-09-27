@@ -17,15 +17,15 @@ class MyStrategy(rmt.Strategy):
             print('filled order:', self._last_order)
 
         elif self._last_order.status() == rmt.OrderStatus.FILLED:
-            remaining_order = exchange.close_order(self._last_order, bid, 100, 0.5)
+            remaining_order = exchange.partial_close_order(self._last_order, 0.5)
 
             print('closed order:', self._last_order)
-            print('remaining order:', remaining_order)
 
-            if remaining_order is not None:
+            if self._last_order is not remaining_order:
+                print('remaining order:', remaining_order)
                 self._last_order = remaining_order
-            else:
-                self._done = True
+        else:
+            self._done = True
     
     def is_done(self) -> bool:
         return self._done

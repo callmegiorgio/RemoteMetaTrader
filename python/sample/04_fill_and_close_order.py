@@ -16,7 +16,7 @@ class MyStrategy(rmt.Strategy):
             self._last_order = exchange.place_market_order(symbol, rmt.Side.BUY, 1, ask, 100)
             print('filled order:', self._last_order)
         elif self._last_order.status() == rmt.OrderStatus.FILLED:
-            exchange.close_order(self._last_order, bid, 100)
+            exchange.close_order(self._last_order)
             print('closed order:', self._last_order)
             self._done = True
 
