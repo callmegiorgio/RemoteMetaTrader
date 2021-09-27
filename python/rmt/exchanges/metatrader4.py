@@ -208,29 +208,10 @@ class MetaTrader4(Exchange):
     
     def close_order(self,
                     order: Order,
-                    price: float,
-                    slippage: int,
-                    lots: Optional[float] = None
-    ) -> Optional[Order]:
-        """
-        Closes a market order.
-
-        If `order` is closed or pending, does nothing.
-
-        Otherwise, sends a command to MT4 to invoke `OrderClose(order.ticket(), lots, slippage, price)`.
-
-        If `lots` is less than `order.lots()`, MT4 is instructed to perform a partial order close.
-        If the partial order close succeeds, the remaining open order is returned by this method.
-        Otherwise, this method returns `None`.
-
-        This method is designed such that no exception is raised if `order` is effectively closed
-        on the MT4 side, provided, of course, that no network error or similar event occurs.
-        """
-
-        if lots is None:
-            lots = order.lots()
-
-        request  = mt4.requests.CloseOrderRequest(order.ticket(), float(price), int(slippage), float(lots))
+                    price: float = 0,
+                    slippage: int = 0
+    ):
+        request  = mt4.requests.CloseOrderRequest(order.ticket(), float(price), int(slippage))
         response = mt4.responses.CloseOrderResponse(self._send_request_and_get_response(request))
 
         order._status      = OrderStatus.CLOSED
@@ -242,38 +223,44 @@ class MetaTrader4(Exchange):
         order._profit      = response.profit()
         order._swap        = response.swap()
 
-        #TODO: implement a specific function for partial close
-        return None
+    def partial_close_order(self,
+                            order: Order,
+                            lots: float,
+                            price: float = 0,
+                            slippage: int = 0
+    ) -> Order:
+        request  = mt4.requests.PartialCloseOrderRequest(order.ticket(), float(lots), float(price), int(slippage))
+        response = mt4.responses.PartialCloseOrderResponse(self._send_request_and_get_response(request))
 
-        # rem_order = jsonutil.read_optional(response, 'remaining_order', dict)
+        order._status      = OrderStatus.CLOSED
+        order._lots        = response.lots()
+        order._close_price = response.close_price()
+        order._close_time  = response.close_time()
+        order._comment     = response.comment()
+        order._commission  = response.commission()
+        order._profit      = response.profit()
+        order._swap        = response.swap()
 
-        # if len(rem_order) == 0:
-        #     return None
-        
-        # rem_order_ticket     = jsonutil.read_required(rem_order, 'ticket',     int)
-        # rem_order_lots       = jsonutil.read_required(rem_order, 'lots',       float)
-        # rem_order_comment    = jsonutil.read_required(rem_order, 'comment',    str)
-        # rem_order_commission = jsonutil.read_required(rem_order, 'commission', float)
-        # rem_order_profit     = jsonutil.read_required(rem_order, 'profit',     float)
-        # rem_order_swap       = jsonutil.read_required(rem_order, 'swap',       float)
+        if response.remaining_order_ticket() != 0:
+            order = Order(
+                ticket       = response.remaining_order_ticket(),
+                symbol       = order.symbol(),
+                side         = order.side(),
+                type         = order.type(),
+                lots         = response.remaining_order_lots(),
+                status       = OrderStatus.FILLED,
+                open_price   = order.open_price(),
+                open_time    = order.open_time(),
+                stop_loss    = order.stop_loss(),
+                take_profit  = order.take_profit(),
+                magic_number = response.remaining_order_magic_number(),
+                comment      = response.remaining_order_comment(),
+                commission   = response.remaining_order_commission(),
+                profit       = response.remaining_order_profit(),
+                swap         = response.remaining_order_swap()
+            )
 
-        # return Order(
-        #     ticket       = rem_order_ticket,
-        #     symbol       = order.symbol(),
-        #     side         = order.side(),
-        #     type         = order.type(),
-        #     lots         = rem_order_lots,
-        #     status       = OrderStatus.FILLED,
-        #     open_price   = order.open_price(),
-        #     open_time    = order.open_time(),
-        #     stop_loss    = order.stop_loss(),
-        #     take_profit  = order.take_profit(),
-        #     magic_number = order.magic_number(),
-        #     comment      = rem_order_comment,
-        #     commission   = rem_order_commission,
-        #     profit       = rem_order_profit,
-        #     swap         = rem_order_swap
-        # )
+        return order
 
     def modify_order(self,
                      order: Order,
@@ -378,7 +365,7 @@ class MetaTrader4(Exchange):
 
         #TODO: add order to track later
 
-        return order 
+        return order
 
     def _wait_response_until(self, timeout_dt: datetime) -> str:
         """Receives a string response from the REQ socket.

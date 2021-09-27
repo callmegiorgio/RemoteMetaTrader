@@ -5,13 +5,13 @@
 
 // Local
 #include "../../Network/MessageHandler.mqh"
+#include "../../Trading/Tick.mqh"
 
 /// Request:
 /// {
 ///   "ticket": integer,
-///   "price": float,
-///   "slippage": integer|undefined,
-///   "lots": double|undefined
+///   "price": float|undefined,
+///   "slippage": integer|undefined
 /// }
 ///
 /// Response:
@@ -24,128 +24,111 @@
 ///   "commission": ?float
 ///   "profit": ?float
 ///   "swap": ?float
-///   "remaining_order":
-///   ?{
-///     "ticket": integer
-///     "lots": float
-///     "comment": string
-///     "commission": float
-///     "profit": float
-///     "swap": float
-///   }
 /// }
 class CloseOrderHandler : public MessageHandler {
-private:
-    void process() override
+protected:
+    bool read_and_select_ticket(int& ticket)
     {
-        int    ticket;
-        double price;
-        int    slippage = 0;
-        double lots     = 0;
-
-        // Required values.
-        if (!read_required("ticket",   ticket)) return;
-        if (!read_required("price",    price))  return;
+        if (!read_required("ticket", ticket))
+            return false;
         
-        read_optional("slippage", slippage);
-        read_optional("lots",     lots);
-
         if (!OrderSelect(ticket, SELECT_BY_TICKET))
         {
             write_result_last_error();
-            return;
+            return false;
         }
 
-        // Check if it's a total or partial close.
-        const bool is_partial_close = lots < OrderLots();
+        return true;
+    }
 
-        //==============================================================================
-        // This seems the most reliable way of getting the ticket of the remaining order
-        // after a partial close.
-        //
-        // The idea is to store the tickets of all open orders before closing an order.
-        // Once an order is closed, remove its ticket from the set and iterate through
-        // all open orders again. The ticket which was not previously stored must be the
-        // remaining order's ticket.
-        //
-        // Example:
-        // (Step 1) `ticket` == 10.
-        // (Step 2) `tickets` before close of `ticket`: (1, 6, 10, 15).
-        // (Step 3) `tickets` after close of `ticket` and its removal: (1, 6, 15).
-        // (Step 4) The ticket which is not within `tickets` is the remaining order's.
-        //==============================================================================
-        HashSet<int> tickets;
+    bool read_price(double& price)
+    {
+        if (read_optional("price", price))
+            return true;
 
-        if (is_partial_close)
-        {
-            const int orders_count = OrdersTotal();
+        Tick last_tick;
 
-            for (int i = 0; i < orders_count; i++)
-            {
-                if (!OrderSelect(i, SELECT_BY_POS))
-                {
-                    write_result_last_error();
-                    return;
-                }
-
-                tickets.add(OrderTicket());
-            }
-        }
-
-        // Order closeup.
-        if (!OrderClose(ticket, lots, price, slippage))
+        if (!Tick::current(OrderSymbol(), last_tick))
         {
             write_result_last_error();
-            return;
+            return false;
         }
 
-        // Retrieve information to client about the closed order, irrespective of
-        // whether it's a partial or whole close.
-        if (OrderSelect(ticket, SELECT_BY_TICKET))
+        switch (OrderType())
         {
-            write_value("cp",         OrderClosePrice());
-            write_value("ct",         OrderCloseTime());
-            write_value("lots",       OrderLots());
-            write_value("comment",    OrderComment());
-            write_value("commission", OrderCommission());
-            write_value("profit",     OrderProfit());
-            write_value("swap",       OrderSwap());
+            case OP_BUY:  price = last_tick.bid(); break;
+            case OP_SELL: price = last_tick.ask(); break;
+
+            default:
+                write_result(-50); // TODO
+                return false;
         }
 
-        if (is_partial_close)
+        return true;
+    }
+
+    void read_slippage(int& slippage)
+    {
+        if (!read_optional("slippage", slippage))
+            slippage = 3;
+    }
+
+    bool close_order(int ticket, double lots, uint retries = 2)
+    {
+        double price;
+        int slippage;
+        
+        read_slippage(slippage);
+
+        retries++;
+        for (uint i = 0; i < retries; i++)
         {
-            // Remove closed order's ticket from the set.
-            tickets.remove(ticket);
+            if (!read_price(price))
+                return false;
 
-            const int orders_count = OrdersTotal();
-
-            // Iterate through all open orders to find the remaining order's ticket.
-            for (int i = 0; i < orders_count; i++)
+            if (OrderClose(ticket, lots, price, slippage))
             {
-                if (!OrderSelect(i, SELECT_BY_POS))
-                    continue;
-                
-                if (!tickets.contains(OrderTicket()))
+                if (OrderSelect(ticket, SELECT_BY_TICKET))
                 {
-                    JsonValue remaining_order;
-                    remaining_order["ticket"]     = OrderTicket();
-                    remaining_order["lots"]       = OrderLots();
-                    remaining_order["comment"]    = OrderComment();
-                    remaining_order["commission"] = OrderCommission();
-                    remaining_order["profit"]     = OrderProfit();
-                    remaining_order["swap"]       = OrderSwap();
-
-                    write_value("remaining_order", remaining_order);
-                    write_result_success();
-                    return;
+                    write_value("cp",         OrderClosePrice());
+                    write_value("ct",         OrderCloseTime());
+                    write_value("lots",       OrderLots());
+                    write_value("comment",    OrderComment());
+                    write_value("commission", OrderCommission());
+                    write_value("profit",     OrderProfit());
+                    write_value("swap",       OrderSwap());
                 }
-            }
 
-            // If control reaches here, that means a partial order was closed, but
-            // we were unable to get the remaining order's ticket, likely due to a
-            // failure of `OrderSelect()`. In that case, just fallthrough and return
-            // a success result, since the partial order was effectively closed.
+                return true;
+            }
+            
+            switch (GetLastError())
+            {
+                case ERR_REQUOTE:
+                case ERR_PRICE_CHANGED:
+                case ERR_OFF_QUOTES:
+                    continue;
+
+                default:
+                    write_result_last_error();
+                    return false;
+            }
         }
+
+        write_result_last_error();
+        return false;
+    }
+
+private:
+    void process() override
+    {
+        int ticket;
+
+        if (!read_and_select_ticket(ticket))
+            return;
+        
+        if (!close_order(ticket, OrderLots()))
+            return;
 
         write_result_success();
     }

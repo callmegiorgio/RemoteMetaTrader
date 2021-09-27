@@ -7,20 +7,23 @@ class CloseOrderRequest(Request):
     def __init__(self,
                  ticket: int,
                  price: float,
-                 slippage: int,
-                 lots: float
+                 slippage: int
     ):
         super().__init__()
 
         self._ticket   = ticket
         self._price    = price
         self._slippage = slippage
-        self._lots     = lots
 
     def message(self) -> Dict:
-        return {
-            'ticket':   self._ticket,
-            'lots':     self._lots,
-            'price':    self._price,
-            'slippage': self._slippage
+        msg = {
+            'ticket': self._ticket
         }
+
+        if self._price != 0:
+            msg['price'] = self._price
+
+        if self._slippage != 0:
+            msg['slippage'] = self._slippage
+
+        return msg

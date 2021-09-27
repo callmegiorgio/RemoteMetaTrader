@@ -294,11 +294,18 @@ class Exchange(QObject):
 
     def close_order(self,
                     order: Order,
-                    price: float,
-                    slippage: int,
-                    lots: Optional[float] = None
+                    price: float = 0,
+                    slippage: int = 0
     ):
         raise NotImplementedError(self.close_order.__name__)
+
+    def partial_close_order(self,
+                            order: Order,
+                            lots: float,
+                            price: float = 0,
+                            slippage: int = 0
+    ) -> Order:
+        raise NotImplementedError(self.partial_close_order.__name__)
 
     def process_events(self):
         pass
