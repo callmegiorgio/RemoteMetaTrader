@@ -24,7 +24,7 @@ public:
     int size() const;
     bool contains(string symbol) const;
 
-    void process_events();
+    void process_events() override;
 
 private:
     HashMap<string, Tick*> m_ticks;
@@ -109,7 +109,8 @@ void TickEventPublisher::process_events()
         ev.symbol = symbol;
         ev.tick   = last_tick;
 
-        if (publish(ev))
-            tick = last_tick;
+        publish(ev);
+
+        tick = last_tick;
     }
 }

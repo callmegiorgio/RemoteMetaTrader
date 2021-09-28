@@ -1,26 +1,18 @@
 #property strict
 
 // Local
+#include "Event.mqh"
 #include "Server.mqh"
 
 class EventPublisher {
 public:
     EventPublisher(Server& the_server);
 
-    template <typename T>
-    bool publish(const T& event);
+    void publish(const Event& event);
+
+    virtual void process_events() = 0;
 
 private:
-    void on_missing_name_error()
-    {
-        Print("Missing event name");
-    }
-
-    void on_writing_failed(string name)
-    {
-        Print("Failed to write body of event '", name, "'");
-    }
-
     Server* m_server;
 };
 
@@ -32,24 +24,15 @@ EventPublisher::EventPublisher(Server& the_server)
     m_server = GetPointer(the_server);
 }
 
-template <typename T>
-bool EventPublisher::publish(const T& event)
+void EventPublisher::publish(const Event& event)
 {
     const string msg_name = event.name();
 
     if (msg_name == "")
     {
-        on_missing_name_error();
-        return false;
+        Print("Missing event name");
+        return;
     }
 
-    JsonValue msg_body;
-
-    if (!event.write(msg_body))
-    {
-        on_writing_failed(msg_name);
-        return false;
-    }
-    
-    return m_server.publish_event(msg_name + " " + msg_body.serialize());
+    m_server.publish_event(StringFormat("%s %s", msg_name, event.body()));
 }
