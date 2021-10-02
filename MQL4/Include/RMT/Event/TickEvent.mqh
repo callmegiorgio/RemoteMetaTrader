@@ -1,20 +1,19 @@
 #property strict
 
 // Local
-#include "../../Network/Event.mqh"
-#include "../../Trading/Tick.mqh"
-#include "../../Utility/JsonValue.mqh"
+#include "../Trading/Tick.mqh"
+#include "Event.mqh"
 
 /// Name: tick.<symbol>
-/// Body: [datetime, float, float]
+/// Content: [datetime, float, float]
 class TickEvent : public Event {
 public:
     string name() const override
     {
-        return "tick:" + symbol;
+        return "tick." + symbol;
     }
 
-    string body() const override
+    JsonValue content() const override
     {
         JsonValue msg;
 
@@ -22,7 +21,7 @@ public:
         msg[1] = this.tick.bid();
         msg[2] = this.tick.ask();
 
-        return msg.serialize();
+        return msg;
     }
 
     string symbol;

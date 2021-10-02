@@ -1,31 +1,24 @@
 from datetime import datetime
-from typing   import Dict, Optional
-from ..       import OperationCode
+from typing   import Optional
+from ..       import OperationCode, Content
 from .        import Request
 
 class PlaceOrderRequest(Request):
-    command = 'place_order'
+    command = 'placeOrder'
 
-    def __init__(
-        self,
-        symbol: str,
-        opcode: OperationCode,
-        lots: float,
-        price: float,
-        slippage: int,
-        stop_loss: float,
-        take_profit: float,
-        comment: str,
-        magic_number: int,
-        expiration: Optional[datetime]
+    def __init__(self,
+                 symbol:       str,
+                 opcode:       OperationCode,
+                 lots:         float,
+                 price:        Optional[float],
+                 slippage:     Optional[int],
+                 stop_loss:    Optional[float],
+                 take_profit:  Optional[float],
+                 comment:      str,
+                 magic_number: int,
+                 expiration:   Optional[datetime]
     ):
         super().__init__()
-
-        if symbol == '':
-            raise ValueError('symbol must not be empty')
-
-        if price == 0 and (opcode not in [OperationCode.BUY, OperationCode.SELL]):
-            raise ValueError('pending order price cannot be zero')
 
         self._symbol       = symbol
         self._opcode       = opcode
@@ -38,32 +31,32 @@ class PlaceOrderRequest(Request):
         self._magic_number = magic_number
         self._expiration   = expiration
 
-    def message(self) -> Dict:
+    def content(self) -> Content:
         msg = {
             'symbol': self._symbol,
             'opcode': self._opcode.value,
             'lots':   self._lots
         }
 
-        if self._price != 0:
-            msg['price'] = self._price
+        if self._price is not None:
+            msg['price'] = float(self._price)
 
-        if self._slippage != 0:
-            msg['slippage'] = self._slippage
+        if self._slippage is not None:
+            msg['slippage'] = int(self._slippage)
 
-        if self._stop_loss != 0.0:
-            msg['sl'] = self._stop_loss
+        if self._stop_loss is not None:
+            msg['sl'] = float(self._stop_loss)
         
-        if self._take_profit != 0.0:
-            msg['tp'] = self._take_profit
+        if self._take_profit is not None:
+            msg['tp'] = float(self._take_profit)
 
         if self._comment != '':
             msg['comment'] = self._comment
 
         if self._magic_number != 0:
             msg['magic'] = self._magic_number
-        
-        if isinstance(self._expiration, datetime):
+
+        if self._expiration is not None:
             msg['expiration'] = int(self._expiration.timestamp())
 
         return msg

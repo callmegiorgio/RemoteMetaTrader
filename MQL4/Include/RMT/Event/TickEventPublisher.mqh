@@ -4,10 +4,10 @@
 #include <Mql/Collection/HashMap.mqh>
 
 // Local
-#include "../Protocol/Event/TickEvent.mqh"
+#include "../Network/Server.mqh"
 #include "../Trading/Tick.mqh"
 #include "EventPublisher.mqh"
-#include "Server.mqh"
+#include "TickEvent.mqh"
 
 /// Stores symbols which a client is subscribed to.
 class TickEventPublisher : private EventPublisher {
@@ -93,17 +93,6 @@ void TickEventPublisher::process_events()
     {
         if (!Tick::current(symbol, last_tick))
             continue;
-
-        // if (!SymbolSelect(symbol, true))
-        //     continue;
-
-        // if (!SymbolInfoTick(symbol, last_tick))
-        //     continue;
-        
-        // if (last_tick.time == tick.server_time && 
-        //     last_tick.bid  == tick.bid &&
-        //     last_tick.ask  == tick.ask)
-        //     continue;
         
         TickEvent ev;
         ev.symbol = symbol;

@@ -1,16 +1,12 @@
-from datetime   import datetime, timezone
-from typing     import Dict
-from rmt        import jsonutil, Tick
-from ..requests import GetTickRequest
-from .          import Response
+from datetime import datetime, timezone
+from rmt      import jsonutil, Tick
+from ..       import Content
 
-class GetTickResponse(Response):
-    command = GetTickRequest.command
-
-    def deserialize(self, obj: Dict):
-        server_time = jsonutil.read_required(obj, 'server_time', int)
-        bid         = jsonutil.read_required(obj, 'bid',         float)
-        ask         = jsonutil.read_required(obj, 'ask',         float)
+class GetTickResponse:
+    def __init__(self, content: Content):
+        server_time = jsonutil.read_required(content, 'time', int)
+        bid         = jsonutil.read_required(content, 'bid',  float)
+        ask         = jsonutil.read_required(content, 'ask',  float)
 
         self._tick = Tick(
             server_time = datetime.fromtimestamp(server_time, timezone.utc),

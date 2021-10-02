@@ -1,16 +1,17 @@
 from datetime import datetime
-from typing   import Dict, Optional
+from typing   import Optional
+from ..       import Content
 from .        import Request
 
 class ModifyOrderRequest(Request):
-    command = 'modify_order'
+    command = 'modifyOrder'
 
     def __init__(self,
-                 ticket: int,
-                 stop_loss: float,
-                 take_profit: float,
-                 price: Optional[float],
-                 expiration: Optional[datetime]
+                 ticket:      int,
+                 stop_loss:   Optional[float],
+                 take_profit: Optional[float],
+                 price:       Optional[float],
+                 expiration:  Optional[datetime]
     ):
         super().__init__()
 
@@ -20,12 +21,16 @@ class ModifyOrderRequest(Request):
         self._price       = price
         self._expiration  = expiration
 
-    def message(self) -> Dict:
+    def content(self) -> Content:
         msg = {
-            'ticket': self._ticket,
-            'sl':     self._stop_loss,
-            'tp':     self._take_profit
+            'ticket': self._ticket
         }
+
+        if self._stop_loss is not None:
+            msg['sl'] = float(self._stop_loss)
+
+        if self._take_profit is not None:
+            msg['tp'] = float(self._take_profit)
 
         if self._price is not None:
             msg['price'] = float(self._price)

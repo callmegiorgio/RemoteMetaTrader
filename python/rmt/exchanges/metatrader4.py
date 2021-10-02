@@ -1,10 +1,10 @@
 import zmq
 import json
 import logging
-from datetime import datetime, timedelta, timezone
-from typing   import List, Optional, Set, Tuple, Type
+from datetime import datetime
+from typing   import Dict, List, Optional, Set, Tuple
 from time     import sleep
-from rmt      import (jsonutil, error, Order, Side, OrderType,
+from rmt      import (error, Order, Side, OrderType,
                       Exchange, Tick, Bar, OrderStatus)
 from . import mt4
 
@@ -13,7 +13,7 @@ class MetaTrader4(Exchange):
 
     def __init__(self,
                  protocol: str = 'tcp',
-                 host: str = 'localhost',
+                 host:     str = 'localhost',
                  req_port: int = 32768,
                  sub_port: int = 32769
     ):
@@ -22,10 +22,43 @@ class MetaTrader4(Exchange):
         ctx = zmq.Context.instance()
         self._req_socket = ctx.socket(zmq.REQ)
         self._sub_socket = ctx.socket(zmq.SUB)
-        self._sub_socket.subscribe('')
+
+        ################################################################################
+        # Set the REP socket to wait for at most 30 seconds to send requests and at most
+        # 10 seconds to receive responses.
+        #
+        # This allows this Client to work well with the Expert Server when it is being
+        # run by the MT4 Strategy Tester.
+        #
+        # If the Strategy Tester is running the Expert Server on visual mode with a low
+        # speed, that will make the Tester invoke the Expert's `OnTick()` function very
+        # slowly, which will in turn slow down any calls to ZMQ socket functions on the
+        # Expert's end, and thus effectively reduce its receipt of Client's requests.
+        # 
+        # According to my measures, it seems that when set to the slowest possible speed,
+        # the Strategy Tester has a delay of 24 seconds between calls to `OnTick()`, so
+        # a value of 30 milliseconds to `zmq.SNDTIMEO` should suffice.
+        # 
+        # Since `OnTimer()` doesn't work while testing, this seems the only way to make
+        # this work. Otherwise, the Client will keep raising `error.RequestTimeout`.
+        #
+        # The receive timeout, on the other hand, is not affected by the Strategy Tester
+        # in any way. It is set here nonetheless just in case connection with the Expert
+        # drops, in which case a request won't take forever to complete. 10 milliseconds
+        # should be more than enough for that. But maybe turn this into a parameter for
+        # `__init__()`?
+        ################################################################################
+        self._req_socket.setsockopt(zmq.SNDTIMEO, 30000)
+        self._req_socket.setsockopt(zmq.RCVTIMEO, 10000)
 
         self._subscribed_symbols: Set[str] = set()
         self._logger = logging.getLogger(MetaTrader4.__name__)
+
+        self._orders: Dict[int, Order] = {}
+
+        self._event_factory = {
+            'tick': (mt4.events.TickEvent, lambda e: self.tick_received.emit(e.symbol(), e.tick()))
+        }
 
         self.connect(protocol, host, req_port, sub_port)
 
@@ -72,7 +105,7 @@ class MetaTrader4(Exchange):
         request = mt4.requests.WatchSymbolRequest(symbol)
         self._send_request(request)
 
-        self._sub_socket.subscribe('tick:' + symbol)
+        self._sub_socket.subscribe('tick.' + symbol)
         self._subscribed_symbols.add(symbol)
 
     def subscribe_all(self):
@@ -81,12 +114,12 @@ class MetaTrader4(Exchange):
         
         for symbol in response.symbols():
             if isinstance(symbol, str):
-                self._sub_socket.subscribe('tick:' + symbol)
+                self._sub_socket.subscribe('tick.' + symbol)
                 self._subscribed_symbols.add(symbol)
 
     def unsubscribe(self, symbol: str):
         if symbol in self._subscribed_symbols:
-            self._sub_socket.unsubscribe('tick:' + symbol)
+            self._sub_socket.unsubscribe('tick.' + symbol)
             self._subscribed_symbols.remove(symbol)
 
     def unsubscribe_all(self):
@@ -98,195 +131,156 @@ class MetaTrader4(Exchange):
     def subscriptions(self) -> Set[str]:
         return self._subscribed_symbols.copy()
 
-    def place_market_order(self,
-                           symbol: str,
-                           side: Side,
-                           lots: float,
-                           price: float = 0,
-                           slippage: int = 0,
-                           stop_loss: float = 0,
-                           take_profit: float = 0,
-                           comment: str = '',
-                           magic_number: int = 0
-    ) -> Order:
-        opcode = None
+    def place_order(self,
+                    symbol:       str,
+                    side:         Side,
+                    order_type:   OrderType,
+                    lots:         float,
+                    price:        Optional[float] = None,
+                    slippage:     Optional[int]   = None,
+                    stop_loss:    Optional[float] = None,
+                    take_profit:  Optional[float] = None,
+                    comment:      str = '',
+                    magic_number: int = 0,
+                    expiration:   Optional[datetime] = None
+    ) -> int:
+        if symbol == '':
+            raise ValueError('instrument symbol must not be empty')
 
-        if side == Side.BUY:
-            opcode = mt4.OperationCode.BUY
-        elif side == Side.SELL:
-            opcode = mt4.OperationCode.SELL
-        else:
-            raise ValueError('invalid Side value %s' % side.value)
-
-        order = self._place_order(
-            symbol       = str(symbol),
-            opcode       = opcode,
-            lots         = float(lots),
-            price        = float(price),
-            slippage     = int(slippage),
-            stop_loss    = float(stop_loss),
-            take_profit  = float(take_profit),
-            comment      = str(comment),
-            magic_number = int(magic_number),
-            expiration   = None
-        )
-
-        return order
-
-    def place_limit_order(self,
-                          symbol: str,
-                          side: Side,
-                          lots: float,
-                          price: float,
-                          stop_loss: float = 0,
-                          take_profit: float = 0,
-                          comment: str = '',
-                          magic_number: int = 0,
-                          expiration: Optional[datetime] = None
-    ) -> Order:
-        opcode = None
-
-        if side == Side.BUY:
-            opcode = mt4.OperationCode.BUY_LIMIT
-        elif side == Side.SELL:
-            opcode = mt4.OperationCode.SELL_LIMIT
-        else:
-            raise ValueError('invalid Side value %s' % side.value)
-
-        order = self._place_order(
-            symbol       = str(symbol),
-            opcode       = opcode,
-            lots         = float(lots),
-            price        = float(price),
-            slippage     = int(0),
-            stop_loss    = float(stop_loss),
-            take_profit  = float(take_profit),
-            comment      = str(comment),
-            magic_number = int(magic_number),
-            expiration   = expiration
-        )
-
-        return order
-
-    def place_stop_order(self,
-                         symbol: str,
-                         side: Side,
-                         lots: float,
-                         price: float,
-                         stop_loss: float = 0,
-                         take_profit: float = 0,
-                         comment: str = '',
-                         magic_number: int = 0,
-                         expiration: Optional[datetime] = None
-    ) -> Order:
-        opcode = None
-
-        if side == Side.BUY:
-            opcode = mt4.OperationCode.BUY_STOP
-        elif side == Side.SELL:
-            opcode = mt4.OperationCode.SELL_STOP
-        else:
-            raise ValueError('invalid Side value %s' % side.value)
-
-        order = self._place_order(
-            symbol       = str(symbol),
-            opcode       = opcode,
-            lots         = float(lots),
-            price        = float(price),
-            slippage     = int(0),
-            stop_loss    = float(stop_loss),
-            take_profit  = float(take_profit),
-            comment      = str(comment),
-            magic_number = int(magic_number),
-            expiration   = expiration
-        )
-
-        return order
-    
-    def close_order(self,
-                    order: Order,
-                    price: float = 0,
-                    slippage: int = 0
-    ):
-        request  = mt4.requests.CloseOrderRequest(order.ticket(), float(price), int(slippage))
-        response = mt4.responses.CloseOrderResponse(self._send_request(request))
-
-        order._status      = OrderStatus.CLOSED
-        order._lots        = response.lots()
-        order._close_price = response.close_price()
-        order._close_time  = response.close_time()
-        order._comment     = response.comment()
-        order._commission  = response.commission()
-        order._profit      = response.profit()
-        order._swap        = response.swap()
-
-    def partial_close_order(self,
-                            order: Order,
-                            lots: float,
-                            price: float = 0,
-                            slippage: int = 0
-    ) -> Order:
-        request  = mt4.requests.PartialCloseOrderRequest(order.ticket(), float(lots), float(price), int(slippage))
-        response = mt4.responses.PartialCloseOrderResponse(self._send_request(request))
-
-        order._status      = OrderStatus.CLOSED
-        order._lots        = response.lots()
-        order._close_price = response.close_price()
-        order._close_time  = response.close_time()
-        order._comment     = response.comment()
-        order._commission  = response.commission()
-        order._profit      = response.profit()
-        order._swap        = response.swap()
-
-        if response.remaining_order_ticket() != 0:
-            order = Order(
-                ticket       = response.remaining_order_ticket(),
-                symbol       = order.symbol(),
-                side         = order.side(),
-                type         = order.type(),
-                lots         = response.remaining_order_lots(),
-                status       = OrderStatus.FILLED,
-                open_price   = order.open_price(),
-                open_time    = order.open_time(),
-                stop_loss    = order.stop_loss(),
-                take_profit  = order.take_profit(),
-                magic_number = response.remaining_order_magic_number(),
-                comment      = response.remaining_order_comment(),
-                commission   = response.remaining_order_commission(),
-                profit       = response.remaining_order_profit(),
-                swap         = response.remaining_order_swap()
+        if side not in [Side.BUY, Side.SELL]:
+            raise ValueError(
+                "invalid value %s for type '%s'"
+                % (side, type(Side))
             )
 
-        return order
+        opcode = None
+
+        if   order_type == OrderType.MARKET_ORDER: opcode = mt4.OperationCode.BUY       if side.BUY else mt4.OperationCode.SELL
+        elif order_type == OrderType.LIMIT_ORDER:  opcode = mt4.OperationCode.BUY_LIMIT if side.BUY else mt4.OperationCode.SELL_LIMIT
+        elif order_type == OrderType.STOP_ORDER:   opcode = mt4.OperationCode.BUY_STOP  if side.BUY else mt4.OperationCode.SELL_STOP
+        else:
+            raise ValueError(
+                "invalid value %s for type '%s'"
+                % (order_type, type(OrderType))
+            )
+
+        request = mt4.requests.PlaceOrderRequest(
+            symbol,
+            opcode,
+            lots,
+            price,
+            slippage,
+            stop_loss,
+            take_profit,
+            comment,
+            magic_number,
+            expiration
+        )
+
+        response = mt4.responses.PlaceOrderResponse(self._send_request(request))
+
+        open_price = None
+        status     = None
+
+        if order_type == OrderType.MARKET_ORDER:
+            open_price  = response.open_price()
+
+            if response.lots() < lots:
+                status = OrderStatus.PARTIALLY_FILLED
+                lots   = response.lots()
+            else:
+                status = OrderStatus.FILLED
+        else:
+            open_price  = price
+            status      = OrderStatus.PENDING
+
+        order = Order(
+            symbol       = symbol,
+            side         = side,
+            type         = order_type,
+            lots         = lots,
+            status       = status,
+            open_price   = open_price,
+            open_time    = response.open_time(),
+            stop_loss    = stop_loss,
+            take_profit  = take_profit,
+            magic_number = magic_number,
+            comment      = comment,
+            commission   = response.commission(),
+            profit       = response.profit(),
+            swap         = response.swap()
+        )
+
+        self._orders[response.ticket()] = order
+
+        return response.ticket()
 
     def modify_order(self,
-                     order: Order,
-                     stop_loss: float,
-                     take_profit: float,
-                     price: Optional[float] = None,
-                     expiration: Optional[datetime] = None
+                     ticket:      int,
+                     stop_loss:   Optional[float]    = None,
+                     take_profit: Optional[float]    = None,
+                     price:       Optional[float]    = None,
+                     expiration:  Optional[datetime] = None
     ):
-        if order.status() not in [OrderStatus.PENDING, OrderStatus.FILLED, OrderStatus.PARTIALLY_FILLED]:
-            return
-
         request = mt4.requests.ModifyOrderRequest(
-            order.ticket(),
-            float(stop_loss),
-            float(take_profit),
+            ticket,
+            stop_loss,
+            take_profit,
             price,
             expiration
         )
 
         mt4.responses.ModifyOrderResponse(self._send_request(request))
 
-        order._stop_loss   = float(stop_loss)
-        order._take_profit = float(take_profit)
+        # order._stop_loss   = float(stop_loss)
+        # order._take_profit = float(take_profit)
 
-        if price is not None:
-            order._open_price = float(price)
+        # if price is not None:
+        #     order._open_price = float(price)
 
-        if expiration is not None:
-            order._expiration = expiration
+        # if expiration is not None:
+        #     order._expiration = expiration
+
+    def close_order(self,
+                    ticket:   int,
+                    price:    Optional[float] = None,
+                    slippage: int             = 0,
+                    lots:     Optional[float] = None
+    ) -> int:
+        request  = mt4.requests.CloseOrderRequest(ticket, price, slippage, lots)
+        response = mt4.responses.CloseOrderResponse(self._send_request(request))
+
+        # order._status      = OrderStatus.CLOSED
+        # order._lots        = response.lots()
+        # order._close_price = response.close_price()
+        # order._close_time  = response.close_time()
+        # order._comment     = response.comment()
+        # order._commission  = response.commission()
+        # order._profit      = response.profit()
+        # order._swap        = response.swap()
+
+        if response.new_order_ticket() != -1:
+            ticket = response.new_order_ticket()
+
+        #     order = Order(
+        #         ticket       = response.new_order_ticket(),
+        #         symbol       = order.symbol(),
+        #         side         = order.side(),
+        #         type         = order.type(),
+        #         lots         = response.new_order_lots(),
+        #         status       = OrderStatus.FILLED,
+        #         open_price   = order.open_price(),
+        #         open_time    = order.open_time(),
+        #         stop_loss    = order.stop_loss(),
+        #         take_profit  = order.take_profit(),
+        #         magic_number = response.new_order_magic_number(),
+        #         comment      = response.new_order_comment(),
+        #         commission   = response.new_order_commission(),
+        #         profit       = response.new_order_profit(),
+        #         swap         = response.new_order_swap()
+        #     )
+
+        return ticket
 
     def process_events(self):
         while True:
@@ -304,129 +298,73 @@ class MetaTrader4(Exchange):
     #===============================================================================
     # Internals (U Can't Touch This)
     #===============================================================================
-    def _place_order(self,
-                     symbol: str,
-                     opcode: mt4.OperationCode,
-                     lots: float,
-                     price: float,
-                     slippage: float,
-                     stop_loss: float,
-                     take_profit: float,
-                     comment: Optional[str],
-                     magic_number: Optional[int],
-                     expiration: Optional[datetime]
-    ):
-        request = mt4.requests.PlaceOrderRequest(
-            symbol,
-            opcode,
-            lots,
-            price,
-            slippage,
-            stop_loss,
-            take_profit,
-            comment,
-            magic_number,
-            expiration
-        )
+    def _parse_response(self, response: str) -> Tuple[mt4.CommandResultCode, Optional[mt4.Content]]:
+        sep_index  = response.find(' ')
+        cmd_result = None
 
-        response = mt4.responses.PlaceOrderResponse(self._send_request(request))
-
-        side       = None
-        type       = None
-        open_price = None
-        status     = None
-
-        if opcode in [mt4.OperationCode.BUY, mt4.OperationCode.SELL]:
-            side        = Side.BUY if opcode == mt4.OperationCode.BUY else Side.SELL
-            type        = OrderType.MARKET_ORDER
-            open_price  = response.open_price()
-
-            if response.lots() == lots:
-                status = OrderStatus.FILLED
-            else:
-                status = OrderStatus.PARTIALLY_FILLED
-                lots   = response.lots()
+        if sep_index == -1:
+            cmd_result = response
         else:
-            if opcode in [mt4.OperationCode.BUY_LIMIT, mt4.OperationCode.SELL_LIMIT]:
-                side = Side.BUY if opcode == mt4.OperationCode.BUY_LIMIT else Side.SELL
-                type = OrderType.LIMIT_ORDER
-            else:
-                side = Side.BUY if opcode == mt4.OperationCode.BUY_STOP else Side.SELL
-                type = OrderType.STOP_ORDER
+            cmd_result = response[0:sep_index]
 
-            open_price  = price
-            status      = OrderStatus.PENDING
+        cmd_result = int(cmd_result)
+        content    = None
 
-        order = Order(
-            ticket       = response.ticket(),
-            symbol       = symbol,
-            side         = side,
-            type         = OrderType.MARKET_ORDER,
-            lots         = lots,
-            status       = status,
-            open_price   = open_price,
-            open_time    = response.open_time(),
-            stop_loss    = stop_loss,
-            take_profit  = take_profit,
-            magic_number = magic_number,
-            comment      = comment,
-            commission   = response.commission(),
-            profit       = response.profit(),
-            swap         = response.swap()
-        )
+        if sep_index != -1:
+            content = response[(sep_index + 1):]
+            content = json.loads(content)
 
-        #TODO: add order to track later
+            if not isinstance(content, (dict, list)):
+                raise ValueError(
+                    'response content is not valid JSON (expected object or array, got: %s)'
+                    % type(content)
+                )
+        
+        return mt4.CommandResultCode(cmd_result), content
 
-        return order
+    def _send_request(self, request: mt4.requests.Request) -> mt4.Content:
+        cmd = request.command
 
-    def _wait_response_until(self, timeout_dt: datetime) -> str:
-        """Receives a string response from the REQ socket.
+        if cmd == '':
+            raise error.RequestError("empty attribute 'command' of request object %s" % type(request))
+        
+        if not cmd.isalpha():
+            raise error.RequestError("expected alphabetic command string (got: '%s')" % request.command)
 
-        Waits until a string response is receives from the PULL socket or
-        `timeout_dt` is reached. If the timeout is reached, raises RequestTimeout.
-        """
-
-        while datetime.now() < timeout_dt:
-            try:
-                response = self._req_socket.recv_string(flags=zmq.DONTWAIT)
-
-                if response != '':
-                    return response
-            except zmq.error.Again:
-                pass
-
-        raise error.RequestTimeout('TODO')
-
-    def _wait_response_for(self, timeout_ms: int) -> str:
-        """
-        Waits for `timeout_ms` until a response is received.
-        """
-        if timeout_ms < 0:
-            timeout_ms = 0
-
-        timeout_dt = datetime.now() + timedelta(0, 0, timeout_ms * 1000)
-
-        return self._wait_response_until(timeout_dt)
-    
-    def _parse_response(self, cmd: str, response: str) -> dict:
-        """
-        Breaks down the content of a `str` response into a `dict` object.
-        """
-
-    def _send_request(self, request: mt4.requests.Request) -> str:
         try:
-            request_msg = request.serialize()
+            content      = json.dumps(request.content())
+            request: str = '%s %s' % (cmd, content)            
+        except (NotImplementedError, ValueError) as e:
+            raise error.RequestError('failed to serialize JSON request: %s' % e)
 
-            self._req_socket.send_string(request_msg, zmq.DONTWAIT)
-            self._logger.debug('Sent request: %s', request_msg)
+        response: str = ''
 
-            response = self._wait_response_for(60000)
-            self._logger.debug('Received response: %s', response)
+        try:
+            self._req_socket.send_string(request)
+            self._logger.debug('sent request: %s', request)
 
-            return response
+            response = self._req_socket.recv_string()
+            self._logger.debug('received response: %s', response)
+
         except zmq.error.Again:
             sleep(0.000000001)
-            raise error.Again()
+            raise error.RequestTimeout()
+
+        cmd_result = None
+        content    = None
+
+        try:
+            cmd_result, content = self._parse_response(response)
+        except ValueError as e:
+            raise error.RequestError('parsing of response message failed: %s' % e)
+
+        if content is None:
+            content = {}
+
+        if cmd_result != mt4.CommandResultCode.SUCCESS:
+            mt4.raise_error(cmd, cmd_result, content)
+
+        return content
 
     def _process_event(self, msg: str):
         """Parses, validates, and notifies an event message.
@@ -440,43 +378,48 @@ class MetaTrader4(Exchange):
             If message body is of an invalid type or has a required value of an invalid type.
         """
 
-        msg_body_index = msg.strip().find(' ')
-
-        if msg_body_index == -1:
-            raise ValueError('could not find whitespace separator in event message')
-
-        msg_name = msg[0:msg_body_index]
-
-        if msg_name.startswith('tick:'):
-            msg_body = msg[msg_body_index:]
-            symbol, tick = self._parse_tick_event(msg_name, msg_body)
-
-            self.tick_received.emit(symbol, tick)
-        else:
-            raise ValueError("event message is of unknown name '%s'" % msg_name)
-
-    def _parse_tick_event(self, msg_name: str, msg_body: str) -> Tuple[str, Tick]:
-        symbol = msg_name[len('tick:'):]
-
-        if symbol == '':
-            raise ValueError("missing instrument's symbol after tick message name")
+        content_index = msg.find(' ')
         
-        tick_array = json.loads(msg_body)
+        if content_index == -1:
+            raise ValueError("missing content from event message '%s'" % msg)
+        
+        content = None
 
-        if not isinstance(tick_array, List):
-            raise TypeError("body of tick event message is of invalid type '%s' (expected: '%s')" % type(tick_array), type(List))
+        try:
+            content = msg[(content_index + 1):]
+        except:
+            raise ValueError("missing content from event message '%s'" % msg)
 
-        if len(tick_array) != 3:
-            raise ValueError('expected 3 array elements in tick event (got: %s)' % len(tick_array))
+        content    = json.loads(content)
+        event_name = msg[:content_index]
 
-        timestamp = jsonutil.read_required_index(tick_array, 0, int)
-        bid       = jsonutil.read_required_index(tick_array, 1, float)
-        ask       = jsonutil.read_required_index(tick_array, 2, float)
+        if not isinstance(content, (dict, list)):
+            raise ValueError("content of event message '%s' is not valid JSON", event_name)
 
-        tick = Tick(
-            server_time = datetime.fromtimestamp(timestamp, timezone.utc),
-            bid         = bid,
-            ask         = ask
-        )
+        static_name = None
+        dynamic_name = None
+        dynamic_name_index = event_name.find('.')
 
-        return symbol, tick
+        if dynamic_name_index != -1:
+            static_name  = event_name[0:dynamic_name_index]
+            dynamic_name = event_name[(dynamic_name_index + 1):]
+        else:
+            static_name = event_name
+
+        if not static_name.isalpha():
+            raise ValueError("expected alphabetic static part of event name (got: '%s')" % static_name)
+
+        if static_name not in self._event_factory:
+            raise ValueError("received event message with unknown name '%s'" % static_name)
+
+        event_data    = self._event_factory[static_name]
+        EventType     = event_data[0]
+        event_emitter = event_data[1]
+        event_obj     = None
+
+        if dynamic_name is not None:
+            event_obj = EventType(dynamic_name, content)
+        else:
+            event_obj = EventType(static_name, content)
+
+        event_emitter(event_obj)

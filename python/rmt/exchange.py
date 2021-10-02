@@ -1,7 +1,7 @@
 from datetime     import datetime
 from typing       import Dict, List, Optional, Set
 from PyQt5.QtCore import QObject, pyqtSignal
-from rmt          import Side, Order, Tick, Bar
+from rmt          import Side, Order, Tick, Bar, OrderType
 
 class Exchange(QObject):
     """Provides access to market data and allows execution of trades."""
@@ -95,9 +95,9 @@ class Exchange(QObject):
         return Tick()
 
     def get_bars(self,
-                 symbol: str,
+                 symbol:     str,
                  start_time: Optional[datetime] = None,
-                 end_time: Optional[datetime] = None
+                 end_time:   Optional[datetime] = None
     ) -> List[Bar]:
         """TODO
 
@@ -185,33 +185,60 @@ class Exchange(QObject):
         """Returns the symbols of all subscribed trading instruments."""
 
         return set()
-    
-    def place_market_order(self,
-                           symbol: str,
-                           side: Side,
-                           lots: float,
-                           price: float = 0,
-                           slippage: int = 0,
-                           stop_loss: float = 0,
-                           take_profit: float = 0,
-                           comment: str = '',
-                           magic_number: int = 0
-    ) -> Order:
-        """Places an order to be executed at market.
 
-        Requests the exchange to execute an order at market price and returns only after the
-        order is effectively filled. An exception is raised if an error happens before or
-        during the order's execution.
+    def place_order(self,
+                    symbol:       str,
+                    side:         Side,
+                    order_type:   OrderType,
+                    lots:         float,
+                    price:        Optional[float] = None,
+                    slippage:     Optional[int]   = None,
+                    stop_loss:    Optional[float] = None,
+                    take_profit:  Optional[float] = None,
+                    comment:      str = '',
+                    magic_number: int = 0,
+                    expiration:   Optional[datetime] = None
+    ) -> int:
+        """Places an order to buy or sell an instrument.
 
-        Warning
-        -------
-        The returned order is not guaranteed to contain a real value for its open price
-        or open time, even if the order was successfully executed. This may happen if the
-        exchange, for whatever reason, fails to retrieve the order's data, in which case
-        the order's open price and open time are `float(0)` and `datetime.fromdatetime(0, timezone.utc)`,
-        respectively. It is up to the user to decide whether to keep the order open or to
-        close it. Since `Order.ticket()` is always guaranteed to store a real value, the order
-        may be closed by a following call to `self.close_order()`.
+        Description
+        -----------
+        This method requests the exchange server to buy or sell a quantity of an
+        instrument at a given price or at market price.
+
+        If `order_type` is `OrderType.MARKET_ORDER`, the exchange is requested to fill
+        an order right away, and this method will not return until an order is filled
+        or an error occurs. Otherwise, if `order_type` is `OrderType.LIMIT_ORDER` or
+        `OrderType.STOP_ORDER`, the exchange is requested to open an order to be filled
+        when market price reaches a certain price, and this method will not return
+        until an order is opened or an error occurs.
+        
+        If `price` is specified for a market order, the exchange is requested to fill an
+        order at that price. Otherwise, if `price` is `None`, the exchange is requested
+        to fill an order at market price.
+        
+        If `price` is specified for a pending order, the exchange is requested to open a
+        pending order which will be filled when market reaches that price. Otherwise,
+        if `price` is `None`, the exchange is requested to open an order which will be
+        filled when market reaches `mp`, where `mp` is the minimum or maximum allowed
+        price (depending on trade `side`) to open a pending order at the time of the last
+        known quote of `symbol`.
+
+        `slippage` may be used with a market order to define the maximum price deviation
+        from the given price or from the market price. It is broker-defined whether the
+        provided slippage will be used or ignored altogether. `slippage` is always ignored
+        for pending orders.
+
+        `lots` refer to the quantity of the instrument identified by `symbol` to be bought
+        or sold. Note that an order may be filled or opened with a smaller lot size than the
+        one provided, in which case that order will be called a *partial order*. It is
+        broker-defined whether partial orders may happen. The order filling policy is
+        broker-specific and a trader may not change or override it, whether by this method
+        call or any other. In other words, if a broker does partial orders, there is nothing
+        a trader may do to change that. However, new orders resulting from a partial fill
+        will be notified on events.
+
+        ...TODO
 
         Parameters
         ----------
@@ -222,99 +249,202 @@ class Exchange(QObject):
             Order side.
 
         lots : float
-            Order quantity in units of the instrument.
+            Quantity of the instrument.
 
         price : float, optional
-            Price at which order is filled. (default: market price)
+            Price at which order is filled. (default: market price for market orders,
+            and minimum or maximum order opening price for pending orders)
 
         slippage : int, optional
             Maximum price slippage. (default: 0)
         
         stop_loss : float, optional
-            Stop loss price.
+            Stop loss price. (default: no Stop Loss level)
         
         take_profit : float, optional
-            Take profit price.
+            Take profit price. (default: no Take Profit level)
 
         comment : str, optional
-            Order comment text. The last part of the comment may be changed by server.
+            Order comment text. The last part of the comment may be changed by the exchange server.
 
         magic_number : int, optional
             Order magic number. This may be used as a user-defined identifier.
 
         Raises
         ------
-        NotImplementedError
-            If method is not implemented by a subclass.
-
         ValueError
-            If a parameter is provided an invalid value (e.g. `len(symbol) == 0`).
+            If an invalid parameter value is provided.
 
         RequestError
-            If request could not be delivered to, or understood by the exchange
-            (e.g. network connection dropped, incompatible API version, etc.).
+            If an error occurred before execution of the order.
 
         ExecutionError
-            If request was delivered and understood by the exchange, but failed to be
-            executed for some reason (e.g. `price` is far off the market range).
+            If an error occurred on the execution of the order.
+
+        Returns
+        -------
+        int
+            Ticket that identifies the placed order.
+        """
+        raise NotImplementedError(
+            '%s.%s is not implemented'
+            % (Exchange.__name__, Exchange.place_order.__name__)
+        )
+
+    def modify_order(self,
+                     ticket:      int,
+                     stop_loss:   Optional[float]    = None,
+                     take_profit: Optional[float]    = None,
+                     price:       Optional[float]    = None,
+                     expiration:  Optional[datetime] = None
+    ):
+        """Modifies an order.
+
+        Description
+        -----------
+
+        Parameters
+        ----------
+        ticket : int
+            Ticket identifying an order.
+
+        stop_loss : float, optional
+            New Stop Loss level. (default: current Stop Loss level)
+        
+        take_profit : float, optional
+            New Take Profit level. (default: current Take Profit level)
+        
+        price : float, optional
+            Price at which to fill the order. (default: current open price)
+        
+        expiration : datetime, optional
+            Time at which to expire the order. (default: current expiration time)
+
+        Raises
+        ------
+        OrderNotFound
+            If `ticket` does not identify an order.
+
+        InvalidOrderStatus
+            If ...
+        """
+
+        raise NotImplementedError(
+            '%s.%s is not implemented'
+            % (Exchange.__name__, Exchange.modify_order.__name__)
+        )
+
+    def close_order(self,
+                    ticket:   int,
+                    price:    Optional[float] = None,
+                    slippage: int             = 0,
+                    lots:     Optional[float] = None
+    ) -> int:
+        """Closes a filled order.
+
+        Description
+        -----------
+        This method requests the exchange server to close the order identified by
+        `ticket`.
+
+        If `ticket` does not identify an order, raises `OrderNotFound`.
+
+        Otherwise, if an order is found and the status of that order is final, namely
+        the order is either closed, canceled, or expired, returns `ticket`.
+
+        On the other hand, if the status of that order is pending, raises `InvalidOrderStatus`.
+
+        Otherwise, tries to close the order.
+        
+        If `price` is a `float` value, the order will be closed at the provided price.
+        Otherwise, the value of None will use the current market price. If the order is
+        a sell, the current ask price will be used; if the order is a buy, the current
+        bid price will be used.
+
+        If a `slippage` is provided, the order will attempt to 
+
+        Parameters
+        ----------
+        ticket : int
+            Ticket that identifies an order.
+        
+        price : float, optional
+            Price at which to close the order. (default: market price)
+
+        slippage : int, optional
+            Maximum price slippage. (default: 0)
+        
+        lots : float, optional
+            Lot size of the order to close. (default: whole order)
+
+        Raises
+        ------
+        OrderNotFound
+            If `ticket` does not identify an order.
+
+        
+
+        Requote
+            ...
+        """
+
+        raise NotImplementedError(
+            '%s.%s is not implemented'
+            % (Exchange.__name__, Exchange.close_order.__name__)
+        )
+
+    def get_order(self, ticket: int) -> Order:
+        """Retrieves information about an order.
+
+        Description
+        -----------
+        This method requests information from the exchange server about the order
+        identified by `ticket`.
+
+        If an order matching `ticket` is found, returns an object of type `Order` which
+        stores information about that order. The returned object is guaranteed to hold
+        the last known information about that order until a call to `process_events()`,
+        `modify_order()`, `close_order()`, or another call to `get_order()` is made,
+        since these methods may cause an order to change or may receive updates, and
+        may thus make the object returned by this call outdated.
+        
+        In any case, the reference to the returned object is never updated by this class,
+        such that the object effectively represents the state of an order at a given time
+        and at no other time.
+
+        Parameters
+        ----------
+        ticket : int
+            Ticket that identifies an order.
+        
+        Raises
+        ------
+        OrderNotFound
+            If `ticket` does not identify an order.
+
+        ExecutionError
+            If any other error occurred at the exchange server while trying to
+            retrieve information about the order.
 
         Returns
         -------
         Order
-            A filled order.
+            object storing information about an order.
         """
 
-        raise NotImplementedError(self.place_market_order.__name__)
-    
-    def place_stop_order(self,
-                         symbol: str,
-                         side: Side,
-                         lots: float,
-                         price: float,
-                         stop_loss: float = 0,
-                         take_profit: float = 0,
-                         comment: str = '',
-                         magic_number: int = 0,
-                         expiration: Optional[datetime] = None
-    ) -> Order:
-        raise NotImplementedError(self.place_stop_order.__name__)
+        raise NotImplementedError(
+            '%s.%s is not implemented'
+            % (Exchange.__name__, Exchange.get_order.__name__)
+        )
 
-    def place_limit_order(self,
-                          symbol: str,
-                          side: Side,
-                          lots: float,
-                          price: float,
-                          stop_loss: float = 0,
-                          take_profit: float = 0,
-                          comment: str = '',
-                          magic_number: int = 0,
-                          expiration: Optional[datetime] = None
-    ) -> Order:
-        raise NotImplementedError(self.place_limit_order.__name__)
-
-    def modify_order(self,
-                     order: Order,
-                     stop_loss: float,
-                     take_profit: float,
-                     price: Optional[float] = None,
-                     expiration: Optional[datetime] = None
-    ):
-        raise NotImplementedError(self.modify_order.__name__)
-
-    def close_order(self,
-                    order: Order,
-                    price: float = 0,
-                    slippage: int = 0
-    ):
-        raise NotImplementedError(self.close_order.__name__)
-
-    def partial_close_order(self,
-                            order: Order,
-                            lots: float,
-                            price: float = 0,
-                            slippage: int = 0
-    ) -> Order:
-        raise NotImplementedError(self.partial_close_order.__name__)
+    def orders(self) -> Dict[int, Order]:
+        raise NotImplementedError(
+            '%s.%s is not implemented'
+            % (Exchange.__name__, Exchange.orders.__name__)
+        )
 
     def process_events(self):
-        pass
+        raise NotImplementedError(
+            '%s.%s is not implemented'
+            % (Exchange.__name__, Exchange.process_events.__name__)
+        )

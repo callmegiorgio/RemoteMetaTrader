@@ -1,8 +1,8 @@
 #property strict
 
+#include "../Include/RMT/Command/RequestProcessor.mqh"
+#include "../Include/RMT/Event/TickEventPublisher.mqh"
 #include "../Include/RMT/Network/Server.mqh"
-#include "../Include/RMT/Network/RequestProcessor.mqh"
-#include "../Include/RMT/Network/TickEventPublisher.mqh"
 
 extern string PROJECT_NAME      = "__RMT_Exp3rt_;D__";
 extern string PROTOCOL          = "tcp";
@@ -37,12 +37,12 @@ void OnDeinit(const int reason)
 
 void OnTick()
 {
-    request_processor.process();
+    request_processor.process_requests();
     tick_event_publisher.process_events();
 }
 
 void OnTimer()
 {
-    request_processor.process();
+    request_processor.process_requests();
     tick_event_publisher.process_events();
 }

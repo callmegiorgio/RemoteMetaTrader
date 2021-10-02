@@ -1,32 +1,27 @@
-from datetime   import datetime, timezone
-from typing     import Dict, List
-from rmt        import Bar, jsonutil
-from ..requests import GetBarsRequest
-from .          import Response
+from datetime import datetime, timezone
+from typing   import List
+from rmt      import Bar, jsonutil
+from ..       import Content
 
-class GetBarsResponse(Response):
-    command = GetBarsRequest.command
-
-    def deserialize(self, obj: Dict):
-        root_arr = jsonutil.read_required_key(obj, 'bars', List)
-        
+class GetBarsResponse:
+    def __init__(self, content: Content):
         self._bars: List[Bar] = []
 
-        for i, _ in enumerate(root_arr):
-            sub_arr = jsonutil.read_required_index(root_arr, i, List)
-            t       = jsonutil.read_required_index(sub_arr,  0, int)
-            o       = jsonutil.read_required_index(sub_arr,  1, float)
-            h       = jsonutil.read_required_index(sub_arr,  2, float)
-            l       = jsonutil.read_required_index(sub_arr,  3, float)
-            c       = jsonutil.read_required_index(sub_arr,  4, float)
+        for i, _ in enumerate(content):
+            bar = jsonutil.read_required(content, i, list)
+            t   = jsonutil.read_required(bar,     0, int)
+            o   = jsonutil.read_required(bar,     1, float)
+            h   = jsonutil.read_required(bar,     2, float)
+            l   = jsonutil.read_required(bar,     3, float)
+            c   = jsonutil.read_required(bar,     4, float)
 
             bar = Bar(
-                    time  = datetime.fromtimestamp(t, timezone.utc),
-                    open  = o,
-                    high  = h,
-                    low   = l,
-                    close = c
-                )
+                time  = datetime.fromtimestamp(t, timezone.utc),
+                open  = o,
+                high  = h,
+                low   = l,
+                close = c
+            )
 
             self._bars.append(bar)
 

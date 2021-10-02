@@ -1,26 +1,7 @@
-import json
-from typing import Dict
+from .. import Content
 
 class Request:
     command = ''
 
-    def message(self) -> Dict:
-        return {}
-
-    def serialize(self) -> str:
-        cmd = self.command
-
-        if cmd == '':
-            raise ValueError('command is empty')
-
-        msg = self.message()
-
-        if not isinstance(msg, Dict):
-            raise ValueError('error: message must be a dict')
-
-        obj = {
-            'cmd': cmd,
-            'msg': msg
-        }
-
-        return json.dumps(obj)
+    def content(self) -> Content:
+        raise NotImplementedError('%s.%s not implemented' % (self.__name__, self.content.__name__))

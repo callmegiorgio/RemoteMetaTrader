@@ -1,9 +1,10 @@
 from datetime import datetime
-from typing   import Dict, Optional
+from typing   import Optional
+from ..       import Content
 from .        import Request
 
 class GetBarsRequest(Request):
-    command = 'get_bars'
+    command = 'getBars'
 
     def __init__(self,
                  symbol: str,
@@ -19,7 +20,7 @@ class GetBarsRequest(Request):
         self._start_time = start_time
         self._end_time   = end_time
     
-    def message(self) -> Dict:
+    def content(self) -> Content:
         msg = {
             'symbol': self._symbol
         }

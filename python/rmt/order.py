@@ -3,7 +3,7 @@ from enum     import IntEnum
 from pprint   import pformat
 
 class Side(IntEnum):
-    """Trading side or direction."""
+    """Trade side or direction."""
 
     BUY   = 0
     SELL  = 1
@@ -26,17 +26,9 @@ class OrderStatus(IntEnum):
     CLOSED           = 5
 
 class Order:
-    """
-    Command placed on the exchange server to trade an instrument.
-
-    This class is not intended to be modified or operated directly, but only through
-    an instance of the `Exchange` class. All methods of this class are thus read-only,
-    since the order's modification only occurs at the server side. Internal values are
-    written directly by `Exchange` when a request is made.
-    """
+    """Stores information about an order."""
 
     def __init__(self,
-                 ticket: int,
                  symbol: str,
                  side: Side,
                  type: OrderType,
@@ -55,7 +47,6 @@ class Order:
                  profit: float = 0.0,
                  swap: float = 0.0
     ):
-        self._ticket       = ticket
         self._symbol       = symbol
         self._side         = side
         self._type         = type
@@ -73,9 +64,6 @@ class Order:
         self._commission   = commission
         self._profit       = profit
         self._swap         = swap
-
-    def ticket(self) -> int:
-        return self._ticket
 
     def symbol(self) -> str:
         return self._symbol

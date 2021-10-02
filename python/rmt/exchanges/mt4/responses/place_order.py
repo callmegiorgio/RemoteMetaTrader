@@ -1,20 +1,17 @@
-from datetime   import datetime, timezone
-from typing     import Dict
-from rmt        import jsonutil
-from ..requests import PlaceOrderRequest
-from .          import Response
+from datetime import datetime, timezone
+from typing   import Dict
+from rmt      import jsonutil
+from ..       import Content
 
-class PlaceOrderResponse(Response):
-    command = PlaceOrderRequest.command
-
-    def deserialize(self, obj: Dict):
-        self._ticket     = jsonutil.read_required_key(obj, 'ticket', int)
-        self._lots       = jsonutil.read_optional(obj, 'lots', float)
-        self._open_price = jsonutil.read_optional(obj, 'op', float)
-        open_timestamp   = jsonutil.read_optional(obj, 'ot',         int)
-        self._commission = jsonutil.read_optional(obj, 'commission', float)
-        self._profit     = jsonutil.read_optional(obj, 'profit',     float)
-        self._swap       = jsonutil.read_optional(obj, 'swap',       float)
+class PlaceOrderResponse:
+    def __init__(self, content: Content):
+        self._ticket     = jsonutil.read_required(content, 'ticket',     int)
+        self._lots       = jsonutil.read_required(content, 'lots',       float)
+        self._open_price = jsonutil.read_required(content, 'op',         float)
+        open_timestamp   = jsonutil.read_required(content, 'ot',         int)
+        self._commission = jsonutil.read_required(content, 'commission', float)
+        self._profit     = jsonutil.read_required(content, 'profit',     float)
+        self._swap       = jsonutil.read_required(content, 'swap',       float)
 
         self._open_time = datetime.fromtimestamp(open_timestamp, timezone.utc)
     

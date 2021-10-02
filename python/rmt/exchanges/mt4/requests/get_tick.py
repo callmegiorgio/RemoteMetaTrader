@@ -1,8 +1,8 @@
-from typing import Dict
-from . import Request
+from .. import Content
+from .  import Request
 
 class GetTickRequest(Request):
-    command = 'get_tick'
+    command = 'getTick'
 
     def __init__(self, symbol: str):
         super().__init__()
@@ -12,7 +12,7 @@ class GetTickRequest(Request):
 
         self._symbol = symbol
 
-    def message(self) -> Dict:
+    def content(self) -> Content:
         return {
             'symbol': self._symbol
         }
