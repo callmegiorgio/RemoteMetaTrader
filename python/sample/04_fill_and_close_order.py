@@ -11,11 +11,14 @@ class MyStrategy(rmt.Strategy):
 
     def on_tick(self, symbol: str, server_time: datetime, bid: float, ask: float):
         print(symbol, server_time, bid, ask)
-        
+
+        if self._done:
+            return
+
         if self._last_order is None:
-            self._last_order = exchange.place_market_order(symbol, rmt.Side.BUY, 1)
+            self._last_order = exchange.place_order(symbol, rmt.Side.BUY, rmt.OrderType.MARKET_ORDER, 1)
             print('filled order:', self._last_order)
-        elif self._last_order.status() == rmt.OrderStatus.FILLED:
+        else:
             exchange.close_order(self._last_order)
             print('closed order:', self._last_order)
             self._done = True
