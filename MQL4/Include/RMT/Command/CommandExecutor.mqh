@@ -76,6 +76,8 @@ CommandResult CommandExecutor::execute(const PlaceOrderRequest& request, PlaceOr
 
     double price = request.price;
 
+    CommandResult cmd_result = CommandResult::SUCCESS;
+
     for (uint i = 1; i <= tries; i++)
     {
         if (should_get_market_price)
@@ -84,7 +86,10 @@ CommandResult CommandExecutor::execute(const PlaceOrderRequest& request, PlaceOr
 
             // If we failed to get price, try again in the next retries.
             if (!Tick::current(request.symbol, last_tick))
+            {
+                cmd_result = GetLastError();
                 continue;
+            }
 
             // We can only use the current market price to fill a market order.
             // If the Client asked us to place a pending order, the Client had
@@ -129,12 +134,13 @@ CommandResult CommandExecutor::execute(const PlaceOrderRequest& request, PlaceOr
                 response.swap       = OrderSwap();
             }
 
-            return CommandResult::SUCCESS;
+            cmd_result = CommandResult::SUCCESS;
+            break;
         }
 
-        const int last_error = GetLastError();
+        cmd_result = GetLastError();
 
-        switch (last_error)
+        switch (cmd_result.code())
         {
             case ERR_REQUOTE:
             case ERR_PRICE_CHANGED:
@@ -142,11 +148,11 @@ CommandResult CommandExecutor::execute(const PlaceOrderRequest& request, PlaceOr
                 continue;
 
             default:
-                return last_error;
+                break;
         }
     }
 
-    return GetLastError();
+    return cmd_result;
 }
 
 CommandResult CommandExecutor::execute(const CloseOrderRequest& request, CloseOrderResponse& response) override
