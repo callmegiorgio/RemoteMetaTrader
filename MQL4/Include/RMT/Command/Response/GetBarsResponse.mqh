@@ -1,7 +1,7 @@
 #property strict
 
 // Local
-#include "../../Utility/JsonValue.mqh"
+#include "../../Utility/JsonWriter.mqh"
 
 /// Response:
 /// [
@@ -11,17 +11,17 @@
 /// ]
 class GetBarsResponse {
 public:
-    void serialize(JsonValue& content)
+    void write(JsonWriter& writer) const
     {
         for (int i = 0; i < this.rates_count; i++)
         {
-            JsonValue* bar = content[i];
+            JsonWriter bar = writer.subdocument(i);
 
-            bar[0] = this.rates[i].time;
-            bar[1] = this.rates[i].open;
-            bar[2] = this.rates[i].high;
-            bar[3] = this.rates[i].low;
-            bar[4] = this.rates[i].close;
+            bar.write(0, this.rates[i].time);
+            bar.write(1, this.rates[i].open);
+            bar.write(2, this.rates[i].high);
+            bar.write(3, this.rates[i].low);
+            bar.write(4, this.rates[i].close);
         }
     }
 

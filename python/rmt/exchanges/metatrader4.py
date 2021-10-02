@@ -259,8 +259,8 @@ class MetaTrader4(Exchange):
         # order._profit      = response.profit()
         # order._swap        = response.swap()
 
-        if response.new_order_ticket() != -1:
-            ticket = response.new_order_ticket()
+        if response.new_order():
+            ticket = response.new_order().ticket()
 
         #     order = Order(
         #         ticket       = response.new_order_ticket(),

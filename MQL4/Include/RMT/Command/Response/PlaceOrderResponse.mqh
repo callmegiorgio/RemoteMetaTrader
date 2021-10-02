@@ -1,7 +1,7 @@
 #property strict
 
 // Local
-#include "../../Utility/JsonValue.mqh"
+#include "../../Utility/JsonWriter.mqh"
 
 /// Response:
 /// {
@@ -15,22 +15,22 @@
 /// }
 class PlaceOrderResponse {
 public:
-    void serialize(JsonValue& content)
+    void write(JsonWriter& writer) const
     {
-        content["ticket"]     = this.ticket;
-        content["lots"]       = this.lots;
-        content["op"]         = this.open_price;
-        content["ot"]         = this.open_time;
-        content["commission"] = this.commission;
-        content["profit"]     = this.profit;
-        content["swap"]       = this.swap;
+        writer.write("ticket",     this.ticket);
+        writer.write("lots",       this.lots);
+        writer.write("op",         this.open_price);
+        writer.write("ot",         this.open_time);
+        writer.write("commission", this.commission);
+        writer.write("profit",     this.profit);
+        writer.write("swap",       this.swap);
     }
 
-    int      ticket;
-    double   lots;
-    double   open_price;
-    datetime open_time;
-    double   commission;
-    double   profit;
-    double   swap;
+    int                ticket;
+    Optional<double>   lots;
+    Optional<double>   open_price;
+    Optional<datetime> open_time;
+    Optional<double>   commission;
+    Optional<double>   profit;
+    Optional<double>   swap;
 };

@@ -1,6 +1,8 @@
 #property strict
 
+// Local
 #include "JsonValue.mqh"
+#include "Optional.mqh"
 
 /////////////////////////////////////////////////////////////////////////////
 /// Reads values from a JSON object or array.
@@ -53,13 +55,19 @@ public:
     bool read(string key, bool&     value, bool optional = false);
     /// @}
     /////////////////////////////////////////////////////////////////////////////
-    
+
     bool read_at(int index, string&   value, bool optional = false);
     bool read_at(int index, double&   value, bool optional = false);
     bool read_at(int index, long&     value, bool optional = false);
     bool read_at(int index, int&      value, bool optional = false);
     bool read_at(int index, datetime& value, bool optional = false);
     bool read_at(int index, bool&     value, bool optional = false);
+
+    template <typename T>
+    bool read_required(string key, T& value);
+
+    template <typename T>
+    bool read_optional(string key, Optional<T>& opt);
 
 protected:
     virtual void on_invalid_root_type_error(JsonType actual_type, JsonType expected_type) {}
@@ -312,4 +320,21 @@ JsonValue* JsonReader::read_value_at(int index, JsonType expected_type, bool opt
     }
     
     return elem;
+}
+
+template <typename T>
+bool JsonReader::read_required(string key, T& value)
+{
+    return read(key, value);
+}
+
+template <typename T>
+bool JsonReader::read_optional(string key, Optional<T>& opt)
+{
+    T value;
+
+    if (read(key, value, true))
+        opt = value;
+
+    return opt.has_value();
 }

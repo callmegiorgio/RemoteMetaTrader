@@ -1,69 +1,70 @@
 #property strict
 
 // Local
-#include "../../Utility/JsonValue.mqh"
+#include "../../Utility/JsonWriter.mqh"
+
+class CloseOrderResponseNewOrder {
+public:
+    void write(JsonWriter& writer) const
+    {
+        writer.write("ticket",     this.ticket);
+        writer.write("lots",       this.lots);
+        writer.write("magic",      this.magic_number);
+        writer.write("comment",    this.comment);
+        writer.write("commission", this.commission);
+        writer.write("profit",     this.profit);
+        writer.write("swap",       this.swap);
+    }
+
+    int    ticket;
+    double lots;
+    int    magic_number;
+    string comment;
+    double commission;
+    double profit;
+    double swap;
+};
 
 /// Response:
 /// {
-///   "cp":         double,
-///   "ct":         datetime,
-///   "lots":       double,
-///   "comment":    string,
-///   "commission": double,
-///   "profit":     double,
-///   "swap":       double,
-///   "new_order": ?{
+///   "cp":         ?double,
+///   "ct":         ?datetime,
+///   "lots":       ?double,
+///   "comment":    ?string,
+///   "commission": ?double,
+///   "profit":     ?double,
+///   "swap":       ?double,
+///   "new_order":
+///   ?{
 ///     "ticket":     integer,
-///     "lots":       double,
-///     "magic":      integer,
-///     "comment":    string,
-///     "commission": double,
-///     "profit":     double,
-///     "swap":       double
+///     "lots":       ?double,
+///     "magic":      ?integer,
+///     "comment":    ?string,
+///     "commission": ?double,
+///     "profit":     ?double,
+///     "swap":       ?double
 ///   }
 /// }
 class CloseOrderResponse {
 public:
-    static const int NO_NEW_ORDER;
-
-    void serialize(JsonValue& content)
+    void write(JsonWriter& writer) const
     {
-        content["cp"]         = this.close_price;
-        content["ct"]         = this.close_time;
-        content["lots"]       = this.lots;
-        content["comment"]    = this.comment;
-        content["commission"] = this.commission;
-        content["profit"]     = this.profit;
-        content["swap"]       = this.swap;
-
-        if (new_order_ticket == CloseOrderResponse::NO_NEW_ORDER)
-            return;
-        
-        JsonValue* new_order = content["new_order"];
-
-        new_order["ticket"]     = this.new_order_ticket;
-        new_order["lots"]       = this.new_order_lots;
-        new_order["magic"]      = this.new_order_magic_number;
-        new_order["comment"]    = this.new_order_comment;
-        new_order["commission"] = this.new_order_commission;
-        new_order["profit"]     = this.new_order_profit;
-        new_order["swap"]       = this.new_order_swap;
+        writer.write("cp",         this.close_price);
+        writer.write("ct",         this.close_time);
+        writer.write("lots",       this.lots);
+        writer.write("comment",    this.comment);
+        writer.write("commission", this.commission);
+        writer.write("profit",     this.profit);
+        writer.write("swap",       this.swap);
+        writer.write("new_order",  this.new_order);
     }
 
-    double   close_price;
-    datetime close_time;
-    double   lots;
-    string   comment;
-    double   commission;
-    double   profit;
-    double   swap;
-    int      new_order_ticket;
-    double   new_order_lots;
-    int      new_order_magic_number;
-    string   new_order_comment;
-    double   new_order_commission;
-    double   new_order_profit;
-    double   new_order_swap;
+    Optional<double>   close_price;
+    Optional<datetime> close_time;
+    Optional<double>   lots;
+    Optional<string>   comment;
+    Optional<double>   commission;
+    Optional<double>   profit;
+    Optional<double>   swap;
+    OptionalComplex<CloseOrderResponseNewOrder> new_order;
 };
-
-static const int CloseOrderResponse::NO_NEW_ORDER = -1;

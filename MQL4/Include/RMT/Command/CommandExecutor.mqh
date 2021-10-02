@@ -268,8 +268,6 @@ CommandResult CommandExecutor::execute(const CloseOrderRequest& request, CloseOr
         response.swap        = OrderSwap();
     }
 
-    response.new_order_ticket = CloseOrderResponse::NO_NEW_ORDER;
-
     if (is_partial_close)
     {
         tickets.remove(request.ticket);
@@ -284,13 +282,17 @@ CommandResult CommandExecutor::execute(const CloseOrderRequest& request, CloseOr
             
             if (!tickets.contains(OrderTicket()))
             {
-                response.new_order_ticket       = OrderTicket();
-                response.new_order_lots         = OrderLots();
-                response.new_order_magic_number = OrderMagicNumber();
-                response.new_order_comment      = OrderComment();
-                response.new_order_commission   = OrderCommission();
-                response.new_order_profit       = OrderProfit();
-                response.new_order_swap         = OrderSwap();
+                CloseOrderResponseNewOrder new_order;
+
+                new_order.ticket       = OrderTicket();
+                new_order.lots         = OrderLots();
+                new_order.magic_number = OrderMagicNumber();
+                new_order.comment      = OrderComment();
+                new_order.commission   = OrderCommission();
+                new_order.profit       = OrderProfit();
+                new_order.swap         = OrderSwap();
+
+                response.new_order = new_order;
 
                 break;
             }

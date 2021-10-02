@@ -2,7 +2,7 @@
 
 // Local
 #include "../../Trading/Tick.mqh"
-#include "../../Utility/JsonValue.mqh"
+#include "../../Utility/JsonWriter.mqh"
 
 /// Response:
 /// {
@@ -12,11 +12,11 @@
 /// }
 class GetTickResponse {
 public:
-    void serialize(JsonValue& content)
+    void write(JsonWriter& writer) const
     {
-        content["time"] = this.last_tick.server_time();
-        content["bid"]  = this.last_tick.bid();
-        content["ask"]  = this.last_tick.ask();
+        writer.write("time", this.last_tick.server_time());
+        writer.write("bid",  this.last_tick.bid());
+        writer.write("ask",  this.last_tick.ask());
     }
 
     Tick last_tick;

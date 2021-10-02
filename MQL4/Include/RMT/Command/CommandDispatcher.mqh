@@ -4,6 +4,7 @@
 #include <Mql/Collection/HashMap.mqh>
 
 // Local
+#include "../Utility/JsonWriter.mqh"
 #include "Request/All.mqh"
 #include "Response/All.mqh"
 #include "CommandArguments.mqh"
@@ -121,7 +122,11 @@ static CommandResult CommandDispatcher::execute_responseful_command(CommandDispa
     CommandResult cmd_result = instance.execute(request, response);
 
     if (cmd_result.code() == CommandResult::SUCCESS)
-        response.serialize(cmd_result.message());
+    {
+        JsonWriter writer(cmd_result.message());
+
+        writer.write(response);
+    }
 
     return cmd_result;
 }
