@@ -72,9 +72,15 @@ CommandResult CommandExecutor::execute(const PlaceOrderRequest& request, PlaceOr
     // Indicates whether we should retrieve the last market price or use the price
     // given to us by the Client. If `request.price` is less than 0, that means the
     // Client didn't give us a price, so we'll be getting current quotes instead.
-    const bool should_get_market_price = request.price < 0;
+    const bool should_get_market_price = (request.price.has_value() == false);
 
-    double price = request.price;
+    double   price        = 0;  request.price.get(price);
+    int      slippage     = 0;  request.slippage.get(slippage);
+    double   stop_loss    = 0;  request.stop_loss.get(stop_loss);
+    double   take_profit  = 0;  request.take_profit.get(take_profit);
+    string   comment      = ""; request.comment.get(comment);
+    int      magic_number = 0;  request.magic_number.get(magic_number);
+    datetime expiration   = 0;  request.expiration.get(expiration);
 
     CommandResult cmd_result = CommandResult::SUCCESS;
 
@@ -95,6 +101,7 @@ CommandResult CommandExecutor::execute(const PlaceOrderRequest& request, PlaceOr
             // If the Client asked us to place a pending order, the Client had
             // to provide the price, because it doesn't make sense to place
             // pending orders on current price.
+            // TODO: get minimum/maximum opening price for pending orders.
             switch (request.opcode)
             {
                 case OP_BUY:  price = last_tick.ask(); break;
@@ -112,14 +119,14 @@ CommandResult CommandExecutor::execute(const PlaceOrderRequest& request, PlaceOr
                 request.opcode,
                 request.lots,
                 price,
-                request.slippage,
-                request.stop_loss,
-                request.take_profit,
-                request.comment,
-                request.magic_number,
-                request.expiration
+                slippage,
+                stop_loss,
+                take_profit,
+                comment,
+                magic_number,
+                expiration
             );
-        
+
         if (ticket != -1)
         {
             response.ticket = ticket;

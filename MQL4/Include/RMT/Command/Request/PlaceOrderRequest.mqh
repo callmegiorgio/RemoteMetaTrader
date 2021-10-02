@@ -2,6 +2,7 @@
 
 // Local
 #include "../../Utility/JsonReader.mqh"
+#include "../../Utility/Optional.mqh"
 
 /// Request:
 /// {
@@ -20,29 +21,29 @@ class PlaceOrderRequest {
 public:
     bool deserialize(JsonReader& reader)
     {
-        if (!reader.read("symbol", symbol)) return false;
-        if (!reader.read("opcode", opcode)) return false;
-        if (!reader.read("lots",   lots))   return false;
+        if (!reader.read_required("symbol", symbol)) return false;
+        if (!reader.read_required("opcode", opcode)) return false;
+        if (!reader.read_required("lots",   lots))   return false;
 
-        if (!reader.read("price",      this.price,        true)) this.price        = -1;
-        if (!reader.read("slippage",   this.slippage,     true)) this.slippage     = 0;
-        if (!reader.read("sl",         this.stop_loss,    true)) this.stop_loss    = 0;
-        if (!reader.read("tp",         this.take_profit,  true)) this.take_profit  = 0;
-        if (!reader.read("comment",    this.comment,      true)) this.comment      = "";
-        if (!reader.read("magic",      this.magic_number, true)) this.magic_number = 0;
-        if (!reader.read("expiration", this.expiration,   true)) this.expiration   = 0;
+        reader.read_optional("price",      this.price);
+        reader.read_optional("slippage",   this.slippage);
+        reader.read_optional("sl",         this.stop_loss);
+        reader.read_optional("tp",         this.take_profit);
+        reader.read_optional("comment",    this.comment);
+        reader.read_optional("magic",      this.magic_number);
+        reader.read_optional("expiration", this.expiration);
 
         return true;
     }
 
-    string symbol;
-    int    opcode;
-    double lots;
-    double price;
-    int    slippage;
-    double stop_loss;
-    double take_profit;
-    string comment;
-    int    magic_number;
-    int    expiration;
+    string             symbol;
+    int                opcode;
+    double             lots;
+    Optional<double>   price;
+    Optional<int>      slippage;
+    Optional<double>   stop_loss;
+    Optional<double>   take_profit;
+    Optional<string>   comment;
+    Optional<int>      magic_number;
+    Optional<datetime> expiration;
 };
