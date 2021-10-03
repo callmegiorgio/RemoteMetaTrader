@@ -325,24 +325,30 @@ CommandResult CommandExecutor::execute(const ModifyOrderRequest& request) overri
     if (!OrderSelect(request.ticket, SELECT_BY_TICKET))
         return GetLastError();
 
-    double   price      = request.price;
-    datetime expiration = request.expiration;
+    double   stop_loss   = 0;
+    double   take_profit = 0;
+    double   price       = 0;
+    datetime expiration  = 0;
 
     switch (OrderType())
     {
         case OP_BUY:
         case OP_SELL:
+            // Try reading S/L or T/P. If neither of them are provided in the request
+            // for a filled order, then, welp, there's nothing to change about it.
+            if (!request.stop_loss.get(stop_loss) && !request.take_profit.get(take_profit))
+                return CommandResult::SUCCESS;
+
             break;
         
         default:
-            if (price < 0)
-                price = OrderOpenPrice();
-            
-            if (expiration == 0)
-                expiration = OrderExpiration();
+            // If it is a pending order, try reading an open price or expiration time.
+            // Use order's current values for any of them not provided in the request.
+            if (!request.price.get(price))           price      = OrderOpenPrice();
+            if (!request.expiration.get(expiration)) expiration = OrderExpiration();
     }
 
-    if (!OrderModify(request.ticket, price, request.stop_loss, request.take_profit, expiration))
+    if (!OrderModify(request.ticket, price, stop_loss, take_profit, expiration))
     {
         const int last_error = GetLastError();
 

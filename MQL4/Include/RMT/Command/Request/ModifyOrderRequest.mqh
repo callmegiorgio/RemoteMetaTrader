@@ -15,20 +15,20 @@ class ModifyOrderRequest {
 public:
     bool deserialize(JsonReader& reader)
     {
-        if (!reader.read("ticket", this.ticket))
+        if (!reader.read_required("ticket", this.ticket))
             return false;
 
-        if (!reader.read("sl",         this.stop_loss,   true)) this.stop_loss   = -1;
-        if (!reader.read("tp",         this.take_profit, true)) this.take_profit = -1;
-        if (!reader.read("price",      this.price,       true)) this.price       = -1;
-        if (!reader.read("expiration", this.expiration,  true)) this.expiration  = 0;
+        reader.read_optional("sl",         this.stop_loss);
+        reader.read_optional("tp",         this.take_profit);
+        reader.read_optional("price",      this.price);
+        reader.read_optional("expiration", this.expiration);
 
         return true;
     }
 
-    int      ticket;
-    double   stop_loss;
-    double   take_profit;
-    double   price;
-    datetime expiration;
+    int                ticket;
+    Optional<double>   stop_loss;
+    Optional<double>   take_profit;
+    Optional<double>   price;
+    Optional<datetime> expiration;
 };

@@ -155,9 +155,15 @@ class MetaTrader4(Exchange):
 
         opcode = None
 
-        if   order_type == OrderType.MARKET_ORDER: opcode = mt4.OperationCode.BUY       if side.BUY else mt4.OperationCode.SELL
-        elif order_type == OrderType.LIMIT_ORDER:  opcode = mt4.OperationCode.BUY_LIMIT if side.BUY else mt4.OperationCode.SELL_LIMIT
-        elif order_type == OrderType.STOP_ORDER:   opcode = mt4.OperationCode.BUY_STOP  if side.BUY else mt4.OperationCode.SELL_STOP
+        if order_type == OrderType.MARKET_ORDER:
+            opcode = mt4.OperationCode.BUY if side == Side.BUY else mt4.OperationCode.SELL
+
+        elif order_type == OrderType.LIMIT_ORDER:
+            opcode = mt4.OperationCode.BUY_LIMIT if side == Side.BUY else mt4.OperationCode.SELL_LIMIT
+
+        elif order_type == OrderType.STOP_ORDER:
+            opcode = mt4.OperationCode.BUY_STOP if side == Side.BUY else mt4.OperationCode.SELL_STOP
+
         else:
             raise ValueError(
                 "invalid value %s for type '%s'"
@@ -230,7 +236,7 @@ class MetaTrader4(Exchange):
             expiration
         )
 
-        mt4.responses.ModifyOrderResponse(self._send_request(request))
+        self._send_request(request)
 
         # order._stop_loss   = float(stop_loss)
         # order._take_profit = float(take_profit)
