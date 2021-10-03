@@ -185,39 +185,57 @@ class MetaTrader4(Exchange):
 
         response = mt4.responses.PlaceOrderResponse(self._send_request(request))
 
-        open_price = None
-        status     = None
+        order_info = response.order_info()
 
-        if order_type == OrderType.MARKET_ORDER:
-            open_price  = response.open_price()
+        ################################################################################
+        # Add order to list of tracked orders if the response also contains information
+        # about the order.
+        # 
+        # This accounts for the case a call to OrderSend() succeeds, but a subsequent
+        # call to OrderSelect() fails. If the call to OrderSelect() succeeded, then all
+        # the remaining information about the order MUST be present in the response.
+        # We then store the order in the list of tracked orders, since we will have ALL
+        # information about the order. Note that redundant information that we already
+        # have (such as symbol, side, etc.) is not sent in the response.
+        #
+        # OTOH, if OrderSelect() fails, then we simply ignore it and return the order's
+        # ticket, since an order was successfully placed. In this case, if get_order()
+        # is called immediately after this method returns, we will attempt to retrieve
+        # info about the order again from the server. In that case, if OrderSelect()
+        # fails another time, *then* an exception is raised.
+        ################################################################################
+        if order_info is not None:
+            status = None
 
-            if response.lots() < lots:
-                status = OrderStatus.PARTIALLY_FILLED
-                lots   = response.lots()
+            if order_type == OrderType.MARKET_ORDER:
+                if order_info.lots() < lots:
+                    status = OrderStatus.PARTIALLY_FILLED
+                else:
+                    status = OrderStatus.FILLED
             else:
-                status = OrderStatus.FILLED
-        else:
-            open_price  = price
-            status      = OrderStatus.PENDING
+                status = OrderStatus.PENDING
 
-        order = Order(
-            symbol       = symbol,
-            side         = side,
-            type         = order_type,
-            lots         = lots,
-            status       = status,
-            open_price   = open_price,
-            open_time    = response.open_time(),
-            stop_loss    = stop_loss,
-            take_profit  = take_profit,
-            magic_number = magic_number,
-            comment      = comment,
-            commission   = response.commission(),
-            profit       = response.profit(),
-            swap         = response.swap()
-        )
+            order = Order(
+                symbol       = symbol,
+                side         = side,
+                type         = order_type,
+                lots         = order_info.lots(),
+                status       = status,
+                open_price   = order_info.open_price(),
+                open_time    = order_info.open_time(),
+                close_price  = None,
+                close_time   = None,
+                expiration   = expiration,
+                stop_loss    = stop_loss,
+                take_profit  = take_profit,
+                magic_number = int(magic_number),
+                comment      = str(comment),
+                commission   = order_info.commission(),
+                profit       = order_info.profit(),
+                swap         = order_info.swap(),
+            )
 
-        self._orders[response.ticket()] = order
+            self._orders[response.ticket()] = order
 
         return response.ticket()
 
@@ -287,6 +305,13 @@ class MetaTrader4(Exchange):
         #     )
 
         return ticket
+
+    def get_order(self, ticket: int) -> Order:
+        if ticket not in self._orders:
+            # TODO: implement 'getOrder' command
+            pass
+
+        return self._orders[ticket]
 
     def process_events(self):
         while True:

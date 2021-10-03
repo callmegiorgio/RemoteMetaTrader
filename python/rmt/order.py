@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from enum     import IntEnum
 from pprint   import pformat
+from typing   import Optional
 
 class Side(IntEnum):
     """Trade side or direction."""
@@ -29,23 +30,23 @@ class Order:
     """Stores information about an order."""
 
     def __init__(self,
-                 symbol: str,
-                 side: Side,
-                 type: OrderType,
-                 lots: float,
-                 status: OrderStatus,
-                 open_price: float,
-                 open_time: datetime,
-                 close_price: float = 0.0,
-                 close_time: datetime = datetime.fromtimestamp(0, timezone.utc),
-                 stop_loss: float = 0.0,
-                 take_profit: float = 0.0,
-                 expiration: datetime = datetime.fromtimestamp(0, timezone.utc),
+                 symbol:       str,
+                 side:         Side,
+                 type:         OrderType,
+                 lots:         float,
+                 status:       OrderStatus,
+                 open_price:   float,
+                 open_time:    datetime,
+                 close_price:  Optional[float]    = None,
+                 close_time:   Optional[datetime] = None,
+                 stop_loss:    Optional[float]    = None,
+                 take_profit:  Optional[float]    = None,
+                 expiration:   Optional[datetime] = None,
                  magic_number: int = 0,
-                 comment: str = '',
-                 commission: float = 0.0,
-                 profit: float = 0.0,
-                 swap: float = 0.0
+                 comment:      str = '',
+                 commission:   float = 0.0,
+                 profit:       float = 0.0,
+                 swap:         float = 0.0
     ):
         self._symbol       = symbol
         self._side         = side
@@ -86,19 +87,19 @@ class Order:
     def open_time(self) -> datetime:
         return self._open_time
 
-    def close_price(self) -> float:
+    def close_price(self) -> Optional[float]:
         return self._close_price
 
-    def close_time(self) -> datetime:
+    def close_time(self) -> Optional[datetime]:
         return self._close_time
 
-    def stop_loss(self) -> float:
+    def stop_loss(self) -> Optional[float]:
         return self._stop_loss
 
-    def take_profit(self) -> float:
+    def take_profit(self) -> Optional[float]:
         return self._take_profit
 
-    def expiration(self) -> datetime:
+    def expiration(self) -> Optional[datetime]:
         return self._expiration
 
     def magic_number(self) -> int:
