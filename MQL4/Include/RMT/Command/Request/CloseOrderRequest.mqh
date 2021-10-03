@@ -6,26 +6,26 @@
 /// Request:
 /// {
 ///   "ticket":   integer,
-///   "lots":     ?double  = -1.0,
-///   "price":    ?double  = -1.0,
-///   "slippage": ?integer = 0
+///   "lots":     ?double,
+///   "price":    ?double,
+///   "slippage": ?integer
 /// }
 class CloseOrderRequest {
 public:
     bool deserialize(JsonReader& reader)
     {
-        if (!reader.read("ticket", this.ticket))
+        if (!reader.read_required("ticket", this.ticket))
             return false;
 
-        if (!reader.read("lots",     this.lots,     true)) this.lots  = -1.0;
-        if (!reader.read("price",    this.price,    true)) this.price = -1.0;
-        if (!reader.read("slippage", this.slippage, true)) this.slippage = 0;
+        reader.read_optional("lots",     this.lots);
+        reader.read_optional("price",    this.price);
+        reader.read_optional("slippage", this.slippage);
 
         return true;
     }
 
-    int    ticket;
-    double lots;
-    double price;
-    int    slippage;
+    int              ticket;
+    Optional<double> lots;
+    Optional<double> price;
+    Optional<int>    slippage;
 };

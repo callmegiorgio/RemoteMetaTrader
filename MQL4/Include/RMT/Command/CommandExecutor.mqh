@@ -101,7 +101,7 @@ CommandResult CommandExecutor::execute(const PlaceOrderRequest& request, PlaceOr
     const datetime expiration   = request.expiration.value_or(0);
 
     double price = request.price.value_or(0);
-    
+
     CommandResult cmd_result = CommandResult::SUCCESS;
 
     for (uint i = 1; i <= tries; i++)
@@ -201,10 +201,8 @@ CommandResult CommandExecutor::execute(const CloseOrderRequest& request, CloseOr
             return CommandResult::make_invalid_order_status("pending", "filled");
     }
 
-    const double is_lots_provided = (request.lots > 0);
-
-    const double lots = is_lots_provided ? request.lots : OrderLots();
-    const bool is_partial_close = lots < OrderLots();
+    const double lots             = request.lots.value_or(OrderLots());
+    const bool   is_partial_close = lots < OrderLots();
 
     //==============================================================================
     // This seems the most reliable way of getting the ticket of the remaining order
@@ -240,14 +238,14 @@ CommandResult CommandExecutor::execute(const CloseOrderRequest& request, CloseOr
     const uint tries = 3;
 
     // Indicates whether we should retrieve the last market price or use the price
-    // given to us by the Client. If `request.price` is less than 0, that means the
-    // Client didn't give us a price, so we'll be getting current quotes instead.
-    const bool should_get_market_price = request.price < 0;
+    // given to us by the Client.
+    const bool should_get_market_price = (request.price.has_value() == false);
 
-    const string symbol = OrderSymbol();
-    double       price  = request.price;
-
-    bool order_close_succeeded = false;
+    const string symbol   = OrderSymbol();
+    const int    slippage = request.slippage.value_or(0);
+    double       price    = request.price.value_or(0);
+    
+    CommandResult cmd_result;
 
     for (uint i = 1; i <= tries; i++)
     {
@@ -257,7 +255,10 @@ CommandResult CommandExecutor::execute(const CloseOrderRequest& request, CloseOr
 
             // If we failed to get price, try again in the next retries.
             if (!Tick::current(symbol, last_tick))
+            {
+                cmd_result = GetLastError();
                 continue;
+            }
 
             // Buy orders are closed on bid price; sell orders are closed on ask price.
             switch (optype)
@@ -267,15 +268,15 @@ CommandResult CommandExecutor::execute(const CloseOrderRequest& request, CloseOr
             }
         }
 
-        if (OrderClose(request.ticket, lots, price, request.slippage))
+        if (OrderClose(request.ticket, lots, price, slippage))
         {
-            order_close_succeeded = true;
+            cmd_result = CommandResult::SUCCESS;
             break;
         }
 
-        const int last_error = GetLastError();
+        cmd_result = GetLastError();
 
-        switch (last_error)
+        switch (cmd_result.code())
         {
             case ERR_REQUOTE:
             case ERR_PRICE_CHANGED:
@@ -283,12 +284,12 @@ CommandResult CommandExecutor::execute(const CloseOrderRequest& request, CloseOr
                 continue;
 
             default:
-                return last_error;
+                break;
         }
     }
 
-    if (!order_close_succeeded)
-        return GetLastError();
+    if (cmd_result.code() != CommandResult::SUCCESS)
+        return cmd_result;
 
     if (OrderSelect(request.ticket, SELECT_BY_TICKET))
     {
