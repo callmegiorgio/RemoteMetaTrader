@@ -107,7 +107,10 @@ string RequestProcessor::process_one(string request)
     string response = IntegerToString(cmd_result.code());
 
     if (response_content != NULL && response_content != "")
-        response += StringFormat(" %s", response_content);
+    {
+        response += " ";
+        response += response_content;
+    }
 
     return response;
 }
