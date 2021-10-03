@@ -49,12 +49,31 @@ CommandResult CommandExecutor::execute(const GetTickRequest& request, GetTickRes
 
 CommandResult CommandExecutor::execute(const GetBarsRequest& request, GetBarsResponse& response) override
 {
+    const datetime start_time = request.start_time.value_or(0);
+    datetime end_time;
+
+    if (!request.end_time.get(end_time))
+    {
+        // According to the MQL4 documentation, this is the last valid date
+        // for `datetime`.
+        // TODO: move this to a function of its own?
+        MqlDateTime dt;
+        dt.year = 3000;
+        dt.mon  = 12;
+        dt.day  = 31;
+        dt.hour = 00;
+        dt.min  = 00;
+        dt.sec  = 00;
+
+        end_time = StructToTime(dt);
+    }
+
     response.rates_count =
         CopyRates(
             request.symbol,
             PERIOD_M1,
-            request.start_time,
-            request.end_time,
+            start_time,
+            end_time,
             response.rates
         );
 
@@ -74,14 +93,15 @@ CommandResult CommandExecutor::execute(const PlaceOrderRequest& request, PlaceOr
     // Client didn't give us a price, so we'll be getting current quotes instead.
     const bool should_get_market_price = (request.price.has_value() == false);
 
-    double   price        = 0;  request.price.get(price);
-    int      slippage     = 0;  request.slippage.get(slippage);
-    double   stop_loss    = 0;  request.stop_loss.get(stop_loss);
-    double   take_profit  = 0;  request.take_profit.get(take_profit);
-    string   comment      = ""; request.comment.get(comment);
-    int      magic_number = 0;  request.magic_number.get(magic_number);
-    datetime expiration   = 0;  request.expiration.get(expiration);
+    const int      slippage     = request.slippage.value_or(0);
+    const double   stop_loss    = request.stop_loss.value_or(0);
+    const double   take_profit  = request.take_profit.value_or(0);
+    const string   comment      = request.comment.value_or("");
+    const int      magic_number = request.magic_number.value_or(0);
+    const datetime expiration   = request.expiration.value_or(0);
 
+    double price = request.price.value_or(0);
+    
     CommandResult cmd_result = CommandResult::SUCCESS;
 
     for (uint i = 1; i <= tries; i++)
@@ -325,28 +345,29 @@ CommandResult CommandExecutor::execute(const ModifyOrderRequest& request) overri
     if (!OrderSelect(request.ticket, SELECT_BY_TICKET))
         return GetLastError();
 
-    double   stop_loss   = 0;
-    double   take_profit = 0;
-    double   price       = 0;
-    datetime expiration  = 0;
+    double   price      = 0;
+    datetime expiration = 0;
 
     switch (OrderType())
     {
         case OP_BUY:
         case OP_SELL:
-            // Try reading S/L or T/P. If neither of them are provided in the request
-            // for a filled order, then, welp, there's nothing to change about it.
-            if (!request.stop_loss.get(stop_loss) && !request.take_profit.get(take_profit))
+            // If neither S/L or T/P is provided in the request for a filled order,
+            // then, welp, there's nothing to change about it.
+            if (!request.stop_loss.has_value() && !request.take_profit.has_value())
                 return CommandResult::SUCCESS;
 
             break;
         
         default:
-            // If it is a pending order, try reading an open price or expiration time.
-            // Use order's current values for any of them not provided in the request.
-            if (!request.price.get(price))           price      = OrderOpenPrice();
-            if (!request.expiration.get(expiration)) expiration = OrderExpiration();
+            // If it is a pending order, try reading an open price or expiration time,
+            // or use their current values instead.
+            price      = request.price.value_or(OrderOpenPrice());
+            expiration = request.expiration.value_or(OrderExpiration());
     }
+
+    const double stop_loss   = request.stop_loss.value_or(OrderStopLoss());
+    const double take_profit = request.take_profit.value_or(OrderTakeProfit());
 
     if (!OrderModify(request.ticket, price, stop_loss, take_profit, expiration))
     {

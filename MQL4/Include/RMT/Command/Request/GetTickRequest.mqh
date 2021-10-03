@@ -11,7 +11,7 @@ class GetTickRequest {
 public:
     bool deserialize(JsonReader& reader)
     {
-        return reader.read("symbol", this.symbol);
+        return reader.read_required("symbol", this.symbol);
     }
 
     string symbol;

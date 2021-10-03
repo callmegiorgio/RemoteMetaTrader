@@ -8,7 +8,7 @@ public:
     Optional(const Optional& other);
 
     bool get(T& value) const;
-    void get_or(T& value, T fallback) const;
+    T value_or(T fallback) const;
 
     void reset();
 
@@ -73,10 +73,14 @@ bool Optional::get(T& value) const
 }
 
 template <typename T>
-void Optional::get_or(T& value, T fallback) const
+T Optional::value_or(T fallback) const
 {
-    if (!get(value))
-        value = fallback;
+    T value;
+
+    if (get(value))
+        return value;
+    
+    return fallback;
 }
 
 template <typename T>
