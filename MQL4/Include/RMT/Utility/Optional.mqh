@@ -27,6 +27,7 @@ public:
     OptionalComplex();
     OptionalComplex(const T& value);
     OptionalComplex(const OptionalComplex& other);
+    ~OptionalComplex();
 
     bool get(T& value) const;
     void get_or(T& value, const T& fallback) const;
@@ -132,6 +133,13 @@ template <typename T>
 OptionalComplex::OptionalComplex(const OptionalComplex& other)
 {
     this.operator=(other);
+}
+
+template <typename T>
+OptionalComplex::~OptionalComplex()
+{
+    if (m_value != NULL)
+        delete m_value;
 }
 
 template <typename T>
