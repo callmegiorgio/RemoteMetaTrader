@@ -47,21 +47,21 @@ public:
     /// @return `true` if a value was read into `value`, and `false` otherwise.
     ///
     /// @{
-    bool read(string key, string&   value, bool optional = false);
-    bool read(string key, double&   value, bool optional = false);
-    bool read(string key, long&     value, bool optional = false);
-    bool read(string key, int&      value, bool optional = false);
-    bool read(string key, datetime& value, bool optional = false);
-    bool read(string key, bool&     value, bool optional = false);
+    bool read(string key, string&   value, bool optional);
+    bool read(string key, double&   value, bool optional);
+    bool read(string key, long&     value, bool optional);
+    bool read(string key, int&      value, bool optional);
+    bool read(string key, datetime& value, bool optional);
+    bool read(string key, bool&     value, bool optional);
     /// @}
     /////////////////////////////////////////////////////////////////////////////
 
-    bool read_at(int index, string&   value, bool optional = false);
-    bool read_at(int index, double&   value, bool optional = false);
-    bool read_at(int index, long&     value, bool optional = false);
-    bool read_at(int index, int&      value, bool optional = false);
-    bool read_at(int index, datetime& value, bool optional = false);
-    bool read_at(int index, bool&     value, bool optional = false);
+    bool read_at(int index, string&   value, bool optional);
+    bool read_at(int index, double&   value, bool optional);
+    bool read_at(int index, long&     value, bool optional);
+    bool read_at(int index, int&      value, bool optional);
+    bool read_at(int index, datetime& value, bool optional);
+    bool read_at(int index, bool&     value, bool optional);
 
     template <typename T>
     bool read_required(string key, T& value);
@@ -325,7 +325,7 @@ JsonValue* JsonReader::read_value_at(int index, JsonType expected_type, bool opt
 template <typename T>
 bool JsonReader::read_required(string key, T& value)
 {
-    return read(key, value);
+    return read(key, value, false);
 }
 
 template <typename T>
