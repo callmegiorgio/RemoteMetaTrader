@@ -66,6 +66,7 @@ public:
 protected:
     virtual CommandResult execute(const WatchSymbolRequest& request) = 0;
     virtual CommandResult execute(const GetTickRequest& request, GetTickResponse& response) = 0;
+    virtual CommandResult execute(const GetCurrentBarRequest& request, GetCurrentBarResponse& response) = 0;
     virtual CommandResult execute(const GetBarsRequest& request, GetBarsResponse& response) = 0;
     virtual CommandResult execute(const PlaceOrderRequest& request, PlaceOrderResponse& response) = 0;
     virtual CommandResult execute(const CloseOrderRequest& request, CloseOrderResponse& response) = 0;
@@ -135,6 +136,7 @@ CommandDispatcher::CommandDispatcher()
 {
     register_responseless_command<WatchSymbolRequest>("watchSymbol");
     register_responseful_command<GetTickRequest, GetTickResponse>("getTick");
+    register_responseful_command<GetCurrentBarRequest, GetCurrentBarResponse>("getCurrentBar");
     register_responseful_command<GetBarsRequest, GetBarsResponse>("getBars");
     register_responseful_command<PlaceOrderRequest, PlaceOrderResponse>("placeOrder");
     register_responseful_command<CloseOrderRequest, CloseOrderResponse>("closeOrder");

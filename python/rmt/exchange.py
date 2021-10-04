@@ -1,7 +1,7 @@
 from datetime     import datetime
 from typing       import Dict, List, Optional, Set
 from PyQt5.QtCore import QObject, pyqtSignal
-from rmt          import Side, Order, Tick, Bar, OrderType
+from rmt          import Side, Order, Tick, Bar, OrderType, Timeframe
 
 class Exchange(QObject):
     """Provides access to market data and allows execution of trades."""
@@ -116,6 +116,15 @@ class Exchange(QObject):
             return None
         
         return bars[0]
+
+    def get_current_bar(self,
+                        symbol:    str,
+                        timeframe: Timeframe = Timeframe.M1
+    ) -> Bar:
+        raise NotImplementedError(
+            '%s.%s is not implemented'
+            % (Exchange.__name__, Exchange.get_current_bar.__name__)
+        )
 
     def subscribe(self, symbol: str):
         """Begins to receive quote updates of an instrument.

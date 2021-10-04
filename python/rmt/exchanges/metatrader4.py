@@ -5,7 +5,8 @@ from datetime import datetime
 from typing   import Dict, List, Optional, Set, Tuple
 from time     import sleep
 from rmt      import (error, Order, Side, OrderType,
-                      Exchange, Tick, Bar, OrderStatus)
+                      Exchange, Tick, Bar, OrderStatus,
+                      Timeframe)
 from . import mt4
 
 class MetaTrader4(Exchange):
@@ -97,6 +98,15 @@ class MetaTrader4(Exchange):
         response = mt4.responses.GetBarsResponse(self._send_request(request))
         
         return response.bars()
+
+    def get_current_bar(self,
+                        symbol:    str,
+                        timeframe: Timeframe = Timeframe.M1
+    ) -> Bar:
+        request  = mt4.requests.GetCurrentBarRequest(symbol, timeframe)
+        response = mt4.responses.GetCurrentBarResponse(self._send_request(request))
+
+        return response.bar()
 
     def subscribe(self, symbol: str):
         if symbol in self._subscribed_symbols:

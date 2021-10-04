@@ -16,6 +16,7 @@ public:
 private:
     CommandResult execute(const WatchSymbolRequest& request) override;
     CommandResult execute(const GetTickRequest& request, GetTickResponse& response) override;
+    CommandResult execute(const GetCurrentBarRequest& request, GetCurrentBarResponse& response) override;
     CommandResult execute(const GetBarsRequest& request, GetBarsResponse& response) override;
     CommandResult execute(const PlaceOrderRequest& request, PlaceOrderResponse& response) override;
     CommandResult execute(const CloseOrderRequest& request, CloseOrderResponse& response) override;
@@ -45,6 +46,20 @@ CommandResult CommandExecutor::execute(const GetTickRequest& request, GetTickRes
         return GetLastError();
     
     return CommandResult::SUCCESS;
+}
+
+CommandResult CommandExecutor::execute(const GetCurrentBarRequest& request, GetCurrentBarResponse& response) override
+{
+    ResetLastError();
+
+    response.time   = iTime  (request.symbol, request.timeframe, 0);
+    response.open   = iOpen  (request.symbol, request.timeframe, 0);
+    response.high   = iHigh  (request.symbol, request.timeframe, 0);
+    response.low    = iLow   (request.symbol, request.timeframe, 0);
+    response.close  = iClose (request.symbol, request.timeframe, 0);
+    response.volume = iVolume(request.symbol, request.timeframe, 0);
+
+    return GetLastError();
 }
 
 CommandResult CommandExecutor::execute(const GetBarsRequest& request, GetBarsResponse& response) override
