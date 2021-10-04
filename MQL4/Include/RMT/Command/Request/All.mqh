@@ -4,6 +4,7 @@
 #include "CloseOrderRequest.mqh"
 #include "GetCurrentBarRequest.mqh"
 #include "GetHistoryBarsRequest.mqh"
+#include "GetOrderRequest.mqh"
 #include "GetTickRequest.mqh"
 #include "ModifyOrderRequest.mqh"
 #include "PlaceOrderRequest.mqh"

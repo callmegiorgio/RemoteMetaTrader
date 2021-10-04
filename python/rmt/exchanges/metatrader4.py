@@ -319,8 +319,10 @@ class MetaTrader4(Exchange):
 
     def get_order(self, ticket: int) -> Order:
         if ticket not in self._orders:
-            # TODO: implement 'getOrder' command
-            pass
+            request  = mt4.requests.GetOrderRequest(ticket)
+            response = mt4.responses.GetOrderResponse(self._send_request(request))
+
+            self._orders[ticket] = response.order()
 
         return self._orders[ticket]
 

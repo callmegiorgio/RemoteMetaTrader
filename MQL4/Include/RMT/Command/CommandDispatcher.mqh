@@ -64,13 +64,14 @@ public:
     CommandResult execute(string command, const JsonValue& content);
 
 protected:
-    virtual CommandResult execute(const WatchSymbolRequest& request) = 0;
-    virtual CommandResult execute(const GetTickRequest& request, GetTickResponse& response) = 0;
-    virtual CommandResult execute(const GetCurrentBarRequest& request, GetCurrentBarResponse& response) = 0;
+    virtual CommandResult execute(const WatchSymbolRequest&    request) = 0;
+    virtual CommandResult execute(const GetTickRequest&        request, GetTickResponse&        response) = 0;
+    virtual CommandResult execute(const GetCurrentBarRequest&  request, GetCurrentBarResponse&  response) = 0;
     virtual CommandResult execute(const GetHistoryBarsRequest& request, GetHistoryBarsResponse& response) = 0;
-    virtual CommandResult execute(const PlaceOrderRequest& request, PlaceOrderResponse& response) = 0;
-    virtual CommandResult execute(const CloseOrderRequest& request, CloseOrderResponse& response) = 0;
-    virtual CommandResult execute(const ModifyOrderRequest& request) = 0;
+    virtual CommandResult execute(const GetOrderRequest&       request, GetOrderResponse&       response) = 0;
+    virtual CommandResult execute(const PlaceOrderRequest&     request, PlaceOrderResponse&     response) = 0;
+    virtual CommandResult execute(const CloseOrderRequest&     request, CloseOrderResponse&     response) = 0;
+    virtual CommandResult execute(const ModifyOrderRequest&    request) = 0;
 
 private:
     typedef CommandResult(*ExecuteFunctionPointer)(CommandDispatcher&, CommandArguments&);
@@ -135,12 +136,14 @@ static CommandResult CommandDispatcher::execute_responseful_command(CommandDispa
 CommandDispatcher::CommandDispatcher()
 {
     register_responseless_command<WatchSymbolRequest>("watchSymbol");
-    register_responseful_command<GetTickRequest, GetTickResponse>("getTick");
-    register_responseful_command<GetCurrentBarRequest, GetCurrentBarResponse>("getCurrentBar");
-    register_responseful_command<GetHistoryBarsRequest, GetHistoryBarsResponse>("getHistoryBars");
-    register_responseful_command<PlaceOrderRequest, PlaceOrderResponse>("placeOrder");
-    register_responseful_command<CloseOrderRequest, CloseOrderResponse>("closeOrder");
     register_responseless_command<ModifyOrderRequest>("modifyOrder");
+
+    register_responseful_command<GetTickRequest,        GetTickResponse       >("getTick");
+    register_responseful_command<GetCurrentBarRequest,  GetCurrentBarResponse >("getCurrentBar");
+    register_responseful_command<GetHistoryBarsRequest, GetHistoryBarsResponse>("getHistoryBars");
+    register_responseful_command<GetOrderRequest,       GetOrderResponse      >("getOrder");
+    register_responseful_command<PlaceOrderRequest,     PlaceOrderResponse    >("placeOrder");
+    register_responseful_command<CloseOrderRequest,     CloseOrderResponse    >("closeOrder");
 }
 
 CommandDispatcher::~CommandDispatcher()

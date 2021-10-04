@@ -14,13 +14,14 @@ public:
     CommandExecutor(TickEventPublisher& tick_publisher);
 
 private:
-    CommandResult execute(const WatchSymbolRequest& request) override;
-    CommandResult execute(const GetTickRequest& request, GetTickResponse& response) override;
-    CommandResult execute(const GetCurrentBarRequest& request, GetCurrentBarResponse& response) override;
+    CommandResult execute(const WatchSymbolRequest&    request) override;
+    CommandResult execute(const GetTickRequest&        request, GetTickResponse&        response) override;
+    CommandResult execute(const GetCurrentBarRequest&  request, GetCurrentBarResponse&  response) override;
     CommandResult execute(const GetHistoryBarsRequest& request, GetHistoryBarsResponse& response) override;
-    CommandResult execute(const PlaceOrderRequest& request, PlaceOrderResponse& response) override;
-    CommandResult execute(const CloseOrderRequest& request, CloseOrderResponse& response) override;
-    CommandResult execute(const ModifyOrderRequest& request) override;
+    CommandResult execute(const GetOrderRequest&       request, GetOrderResponse&       response) override;
+    CommandResult execute(const PlaceOrderRequest&     request, PlaceOrderResponse&     response) override;
+    CommandResult execute(const CloseOrderRequest&     request, CloseOrderResponse&     response) override;
+    CommandResult execute(const ModifyOrderRequest&    request) override;
 
     TickEventPublisher* m_tick_publisher;
 };
@@ -94,6 +95,70 @@ CommandResult CommandExecutor::execute(const GetHistoryBarsRequest& request, Get
 
     if (response.rates_count == -1)
         return GetLastError();
+
+    return CommandResult::SUCCESS;
+}
+
+CommandResult CommandExecutor::execute(const GetOrderRequest& request, GetOrderResponse& response) override
+{
+    if (!OrderSelect(request.ticket, SELECT_BY_TICKET))
+        return GetLastError();
+
+    response.opcode     = OrderType();
+    response.symbol     = OrderSymbol();
+    response.lots       = OrderLots();
+    response.open_price = OrderOpenPrice();
+    response.open_time  = OrderOpenTime();
+
+    if (OrderClosePrice() > 0)
+        response.close_price = OrderClosePrice();
+
+    if (OrderCloseTime() > 0)
+    {
+        switch (OrderType())
+        {
+            case OP_BUY:
+            case OP_SELL:
+                response.status = "closed";
+                break;
+
+            default:
+                if (OrderCloseTime() < OrderExpiration())
+                    response.status = "canceled";
+                else
+                    response.status = "expired";
+        }
+
+        response.close_time = OrderCloseTime();
+    }
+    else
+    {
+        switch (OrderType())
+        {
+            case OP_BUY:
+            case OP_SELL:
+                response.status = "filled";
+                break;
+
+            default:
+                response.status = "pending";
+        }
+    }
+
+    if (OrderStopLoss() > 0)
+        response.stop_loss = OrderStopLoss();
+    
+    if (OrderTakeProfit() > 0)
+        response.take_profit = OrderTakeProfit();
+
+    if (OrderExpiration() > 0)
+        response.expiration = OrderExpiration();
+
+    response.comment      = OrderComment();
+    response.magic_number = OrderMagicNumber();
+    response.commission   = OrderCommission();
+    response.profit       = OrderProfit();
+    response.swap         = OrderSwap();
 
     return CommandResult::SUCCESS;
 }
