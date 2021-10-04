@@ -58,6 +58,6 @@ class Bar:
 
     def __str__(self) -> str:
         return (
-            'Bar(time: %s, open: %s, high: %s, low: %s, close: %s, volume: %s)'
-            % (self.time, self.open, self.high, self.low, self.close, self.volume)
+            'Bar(%s, O: %s, H: %s, L: %s, C: %s, V: %s)'
+            % (self.time.strftime('%Y-%m-%d %H:%M'), self.open, self.high, self.low, self.close, self.volume)
         )
