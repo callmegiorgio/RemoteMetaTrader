@@ -115,7 +115,7 @@ class Exchange(QObject):
     ) -> Optional[Bar]:
         """Returns a bar of an instrument at a specified time."""
 
-        bars = self.get_bars(symbol, time, time, timeframe)
+        bars = self.get_history_bars(symbol, time, time, timeframe)
 
         if len(bars) == 0:
             return None

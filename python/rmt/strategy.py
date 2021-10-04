@@ -53,7 +53,7 @@ class Strategy(QObject):
         elif self._last_closed_bar_time != last_closed_bar_time:
             self._last_closed_bar_time = last_closed_bar_time
 
-            closed_bar = self.exchange.get_bar(symbol, last_closed_bar_time)
+            closed_bar = self.exchange.get_history_bar(symbol, last_closed_bar_time)
 
             if closed_bar is not None:
                 self.on_bar_closed(symbol, closed_bar)
