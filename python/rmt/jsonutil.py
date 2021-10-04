@@ -1,8 +1,7 @@
-from typing import Any, Dict, List, Type, Union
+from datetime import datetime, timezone
+from typing   import Any, Dict, List, Type, Union
 
-def read_required(container: Union[Dict, List], pos: Union[str, int], ExpectedType: Type[Any]):
-    value = container[pos]
-
+def _ensure_type_or_raise(pos: Union[str, int], value: Any, ExpectedType: Type[Any]):
     if not isinstance(value, ExpectedType):
         if isinstance(pos, str):
             raise TypeError(
@@ -15,7 +14,24 @@ def read_required(container: Union[Dict, List], pos: Union[str, int], ExpectedTy
                 % (pos, type(value), type(ExpectedType))
             )
 
-    return value
+def _ensure_type_or_default(value: Any, ExpectedType: Type[Any], *default: Any):
+    if isinstance(value, ExpectedType):
+        return value
+    
+    if len(default) > 0:
+        return default[0]
+    else:
+        return ExpectedType()
+
+def read_required(container: Union[Dict, List], pos: Union[str, int], ExpectedType: Type[Any]):
+    value = container[pos]
+
+    if ExpectedType == datetime:
+        _ensure_type_or_raise(pos, value, int)
+        return datetime.fromtimestamp(value, timezone.utc)
+    else:
+        _ensure_type_or_raise(pos, value, ExpectedType)
+        return value
 
 def read_optional(container: Union[Dict, List], pos: Union[str, int], ExpectedType: Type[Any], *default: Any):
     value = None
@@ -25,10 +41,12 @@ def read_optional(container: Union[Dict, List], pos: Union[str, int], ExpectedTy
     except (KeyError, IndexError):
         pass
 
-    if isinstance(value, ExpectedType):
-        return value
+    if ExpectedType == datetime:
+        value = _ensure_type_or_default(value, int, *default)
 
-    if len(default) > 0:
-        return default[0]
-    
-    return ExpectedType()
+        if isinstance(value, int):
+            return datetime.fromtimestamp(value, timezone.utc)
+        else:
+            return value
+    else:
+        return _ensure_type_or_default(value, ExpectedType, *default)
