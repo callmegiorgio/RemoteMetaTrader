@@ -3,7 +3,7 @@ from typing   import List
 from rmt      import Bar, jsonutil
 from ..       import Content
 
-class GetBarsResponse:
+class GetHistoryBarsResponse:
     def __init__(self, content: Content):
         self._bars: List[Bar] = []
 

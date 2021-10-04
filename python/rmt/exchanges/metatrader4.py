@@ -89,13 +89,14 @@ class MetaTrader4(Exchange):
         
         return response.tick()
 
-    def get_bars(self,
-                 symbol: str,
-                 start_time: Optional[datetime] = None,
-                 end_time: Optional[datetime] = None
+    def get_history_bars(self,
+                         symbol: str,
+                         start_time: Optional[datetime] = None,
+                         end_time:   Optional[datetime] = None,
+                         timeframe:  Timeframe = Timeframe.M1
     ) -> List[Bar]:
-        request  = mt4.requests.GetBarsRequest(symbol, start_time, end_time)
-        response = mt4.responses.GetBarsResponse(self._send_request(request))
+        request  = mt4.requests.GetHistoryBarsRequest(symbol, start_time, end_time, timeframe)
+        response = mt4.responses.GetHistoryBarsResponse(self._send_request(request))
         
         return response.bars()
 

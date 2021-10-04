@@ -17,7 +17,7 @@ private:
     CommandResult execute(const WatchSymbolRequest& request) override;
     CommandResult execute(const GetTickRequest& request, GetTickResponse& response) override;
     CommandResult execute(const GetCurrentBarRequest& request, GetCurrentBarResponse& response) override;
-    CommandResult execute(const GetBarsRequest& request, GetBarsResponse& response) override;
+    CommandResult execute(const GetHistoryBarsRequest& request, GetHistoryBarsResponse& response) override;
     CommandResult execute(const PlaceOrderRequest& request, PlaceOrderResponse& response) override;
     CommandResult execute(const CloseOrderRequest& request, CloseOrderResponse& response) override;
     CommandResult execute(const ModifyOrderRequest& request) override;
@@ -62,7 +62,7 @@ CommandResult CommandExecutor::execute(const GetCurrentBarRequest& request, GetC
     return GetLastError();
 }
 
-CommandResult CommandExecutor::execute(const GetBarsRequest& request, GetBarsResponse& response) override
+CommandResult CommandExecutor::execute(const GetHistoryBarsRequest& request, GetHistoryBarsResponse& response) override
 {
     const datetime start_time = request.start_time.value_or(0);
     datetime end_time;
@@ -86,7 +86,7 @@ CommandResult CommandExecutor::execute(const GetBarsRequest& request, GetBarsRes
     response.rates_count =
         CopyRates(
             request.symbol,
-            PERIOD_M1,
+            request.timeframe,
             start_time,
             end_time,
             response.rates

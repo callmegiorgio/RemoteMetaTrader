@@ -2,7 +2,7 @@
 
 // Local
 #include "CloseOrderResponse.mqh"
-#include "GetBarsResponse.mqh"
 #include "GetCurrentBarResponse.mqh"
+#include "GetHistoryBarsResponse.mqh"
 #include "GetTickResponse.mqh"
 #include "PlaceOrderResponse.mqh"

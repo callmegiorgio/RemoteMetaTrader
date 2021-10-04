@@ -9,7 +9,7 @@
 ///   [datetime, double, double, double, double],
 ///   ...
 /// ]
-class GetBarsResponse {
+class GetHistoryBarsResponse {
 public:
     void write(JsonWriter& writer) const
     {

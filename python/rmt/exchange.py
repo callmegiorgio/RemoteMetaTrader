@@ -94,10 +94,11 @@ class Exchange(QObject):
 
         return Tick()
 
-    def get_bars(self,
-                 symbol:     str,
-                 start_time: Optional[datetime] = None,
-                 end_time:   Optional[datetime] = None
+    def get_history_bars(self,
+                         symbol:     str,
+                         start_time: Optional[datetime] = None,
+                         end_time:   Optional[datetime] = None,
+                         timeframe:  Timeframe = Timeframe.M1
     ) -> List[Bar]:
         """TODO
 
@@ -107,10 +108,14 @@ class Exchange(QObject):
 
         return []
     
-    def get_bar(self, symbol: str, time: datetime) -> Optional[Bar]:
+    def get_history_bar(self,
+                        symbol:    str,
+                        time:      datetime,
+                        timeframe: Timeframe = Timeframe.M1
+    ) -> Optional[Bar]:
         """Returns a bar of an instrument at a specified time."""
 
-        bars = self.get_bars(symbol, time, time)
+        bars = self.get_bars(symbol, time, time, timeframe)
 
         if len(bars) == 0:
             return None

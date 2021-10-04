@@ -1,15 +1,17 @@
 from datetime import datetime
 from typing   import Optional
+from rmt      import Timeframe
 from ..       import Content
 from .        import Request
 
-class GetBarsRequest(Request):
-    command = 'getBars'
+class GetHistoryBarsRequest(Request):
+    command = 'getHistoryBars'
 
     def __init__(self,
-                 symbol: str,
+                 symbol:     str,
                  start_time: Optional[datetime],
-                 end_time: Optional[datetime]
+                 end_time:   Optional[datetime],
+                 timeframe:  Timeframe = Timeframe.M1
     ):
         super().__init__()
 
@@ -19,10 +21,12 @@ class GetBarsRequest(Request):
         self._symbol     = symbol
         self._start_time = start_time
         self._end_time   = end_time
+        self._timeframe  = str(timeframe.value)
     
     def content(self) -> Content:
         msg = {
-            'symbol': self._symbol
+            'symbol': self._symbol,
+            'timeframe': self._timeframe
         }
 
         if isinstance(self._start_time, datetime):
