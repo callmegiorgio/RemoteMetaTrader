@@ -1,12 +1,22 @@
 from datetime import datetime
+from typing   import Optional
+from rmt      import Side
 
 class Bar:
-    def __init__(self, time: datetime, open: float, high: float, low: float, close: float):
-        self._time  = time
-        self._open  = float(open)
-        self._high  = float(high)
-        self._low   = float(low)
-        self._close = float(close)
+    def __init__(self,
+                 time:   datetime,
+                 open:   float,
+                 high:   float,
+                 low:    float,
+                 close:  float,
+                 volume: int = 0
+    ):
+        self._time   = time
+        self._open   = float(open)
+        self._high   = float(high)
+        self._low    = float(low)
+        self._close  = float(close)
+        self._volume = int(volume)
     
     @property
     def time(self) -> datetime:
@@ -27,21 +37,27 @@ class Bar:
     @property
     def close(self) -> float:
         return self._close
-    
+
+    @property
+    def volume(self) -> int:
+        return self._volume
+
+    def side(self) -> Optional[Side]:
+        if self.is_bullish():
+            return Side.BUY
+        elif self.is_bearish():
+            return Side.SELL
+        else:
+            return None
+
+    def is_bullish(self) -> bool:
+        return self._close > self._open
+
+    def is_bearish(self) -> bool:
+        return self._close < self._open
+
     def __str__(self) -> str:
-        return \
-            """
-            Bar(
-                time: {}
-                open: {}
-                high: {}
-                low: {}
-                close: {}
-            )
-            """.format(
-                self.time,
-                self.open,
-                self.high,
-                self.low,
-                self.close
-            )
+        return (
+            'Bar(time: %s, open: %s, high: %s, low: %s, close: %s, volume: %s)'
+            % (self.time, self.open, self.high, self.low, self.close, self.volume)
+        )
