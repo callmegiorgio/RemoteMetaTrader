@@ -133,10 +133,10 @@ void Server::stop_pub_socket()
     if (!m_pub_socket.is_bound())
         return;
 
-    Print("Unbinding (PUSH) socket from address: ", m_pub_socket.address());
+    Print("Unbinding (PUB) socket from address: ", m_pub_socket.address());
 
     if (!m_pub_socket.unbind())
-        Print("Failed to unbind (PUSH) socket: ", last_error_message());
+        Print("Failed to unbind (PUB) socket: ", last_error_message());
 }
 
 bool Server::recv_request(string& request)
