@@ -93,6 +93,9 @@ void TickEventPublisher::process_events()
     {
         if (!Tick::current(symbol, last_tick))
             continue;
+
+        if (tick.bid() == last_tick.bid() && tick.ask() == last_tick.ask())
+            continue;
         
         TickEvent ev;
         ev.symbol = symbol;
