@@ -1,7 +1,7 @@
 from datetime     import datetime
 from typing       import Dict, List, Optional, Set
 from PyQt5.QtCore import QObject, pyqtSignal
-from rmt          import Side, Order, Tick, Bar, OrderType, Timeframe
+from rmt          import Side, Order, Tick, Bar, OrderType, Timeframe, Instrument
 
 class Exchange(QObject):
     """Provides access to market data and allows execution of trades."""
@@ -93,6 +93,12 @@ class Exchange(QObject):
         """Returns the last quotes of an instrument."""
 
         return Tick()
+
+    def get_instrument(self, symbol: str) -> Instrument:
+        raise NotImplementedError(
+            '%s.%s is not implemented'
+            % (Exchange.__name__, 'get_instrument')
+        )
 
     def get_history_bars(self,
                          symbol:     str,

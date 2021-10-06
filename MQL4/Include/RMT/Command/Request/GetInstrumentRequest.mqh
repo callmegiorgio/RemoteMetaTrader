@@ -1,0 +1,18 @@
+#property strict
+
+// Local
+#include "../../Utility/JsonReader.mqh"
+
+/// Request:
+/// {
+///   "symbol": string
+/// }
+class GetInstrumentRequest {
+public:
+    bool deserialize(JsonReader& reader)
+    {
+        return reader.read_required("symbol", this.symbol);
+    }
+
+    string symbol;
+};

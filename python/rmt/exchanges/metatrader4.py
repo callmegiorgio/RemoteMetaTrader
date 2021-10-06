@@ -6,7 +6,7 @@ from typing   import Dict, List, Optional, Set, Tuple
 from time     import sleep
 from rmt      import (error, Order, Side, OrderType,
                       Exchange, Tick, Bar, OrderStatus,
-                      Timeframe)
+                      Timeframe, Instrument)
 from . import mt4
 
 class MetaTrader4(Exchange):
@@ -55,6 +55,8 @@ class MetaTrader4(Exchange):
         self._subscribed_symbols: Set[str] = set()
         self._logger = logging.getLogger(MetaTrader4.__name__)
 
+        self._instruments: Dict[str, Instrument] = {}
+
         self._orders: Dict[int, Order] = {}
 
         self._event_factory = {
@@ -89,6 +91,33 @@ class MetaTrader4(Exchange):
         
         return response.tick()
 
+    def get_instrument(self, symbol: str) -> Instrument:
+        if symbol not in self._instruments:
+            request  = mt4.requests.GetInstrumentRequest(symbol)
+            response = mt4.responses.GetInstrumentResponse(self._send_request(request))
+
+            instrument = Instrument(
+                symbol          = symbol,
+                description     = response.description(),
+                base_currency   = response.base_currency(),
+                profit_currency = response.profit_currency(),
+                margin_currency = response.margin_currency(),
+                decimal_places  = response.decimal_places(),
+                point           = response.point(),
+                tick_size       = response.tick_size(),
+                contract_size   = response.contract_size(),
+                lot_step        = response.lot_step(),
+                min_lot         = response.min_lot(),
+                max_lot         = response.max_lot(),
+                min_stop_level  = response.min_stop_level(),
+                freeze_level    = response.freeze_level(),
+                spread          = response.spread()
+            )
+
+            self._instruments[symbol] = instrument
+
+        return self._instruments[symbol]
+    
     def get_history_bars(self,
                          symbol: str,
                          start_time: Optional[datetime] = None,
