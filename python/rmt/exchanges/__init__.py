@@ -1,1 +1,1 @@
-from .metatrader4 import MetaTrader4
+from .mt4 import MetaTrader4

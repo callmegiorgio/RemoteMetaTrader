@@ -7,7 +7,7 @@ from time     import sleep
 from rmt      import (error, Order, Side, OrderType,
                       Exchange, Tick, Bar, OrderStatus,
                       Timeframe, Instrument)
-from . import mt4
+from . import *
 
 class MetaTrader4(Exchange):
     """Bindings for executing market operations on MetaTrader 4."""
@@ -60,7 +60,7 @@ class MetaTrader4(Exchange):
         self._orders: Dict[int, Order] = {}
 
         self._event_factory = {
-            'tick': (mt4.events.TickEvent, lambda e: self.tick_received.emit(e.symbol(), e.tick()))
+            'tick': (events.TickEvent, lambda e: self.tick_received.emit(e.symbol(), e.tick()))
         }
 
         self.connect(protocol, host, req_port, sub_port)
@@ -86,15 +86,15 @@ class MetaTrader4(Exchange):
         self._sub_socket.close()
 
     def get_tick(self, symbol: str) -> Tick:
-        request  = mt4.requests.GetTickRequest(symbol)
-        response = mt4.responses.GetTickResponse(self._send_request(request))
+        request  = requests.GetTickRequest(symbol)
+        response = responses.GetTickResponse(self._send_request(request))
         
         return response.tick()
 
     def get_instrument(self, symbol: str) -> Instrument:
         if symbol not in self._instruments:
-            request  = mt4.requests.GetInstrumentRequest(symbol)
-            response = mt4.responses.GetInstrumentResponse(self._send_request(request))
+            request  = requests.GetInstrumentRequest(symbol)
+            response = responses.GetInstrumentResponse(self._send_request(request))
 
             instrument = Instrument(
                 symbol          = symbol,
@@ -124,8 +124,8 @@ class MetaTrader4(Exchange):
                          end_time:   Optional[datetime] = None,
                          timeframe:  Timeframe = Timeframe.M1
     ) -> List[Bar]:
-        request  = mt4.requests.GetHistoryBarsRequest(symbol, start_time, end_time, timeframe)
-        response = mt4.responses.GetHistoryBarsResponse(self._send_request(request))
+        request  = requests.GetHistoryBarsRequest(symbol, start_time, end_time, timeframe)
+        response = responses.GetHistoryBarsResponse(self._send_request(request))
         
         return response.bars()
 
@@ -133,8 +133,8 @@ class MetaTrader4(Exchange):
                         symbol:    str,
                         timeframe: Timeframe = Timeframe.M1
     ) -> Bar:
-        request  = mt4.requests.GetCurrentBarRequest(symbol, timeframe)
-        response = mt4.responses.GetCurrentBarResponse(self._send_request(request))
+        request  = requests.GetCurrentBarRequest(symbol, timeframe)
+        response = responses.GetCurrentBarResponse(self._send_request(request))
 
         return response.bar()
 
@@ -142,15 +142,15 @@ class MetaTrader4(Exchange):
         if symbol in self._subscribed_symbols:
             return
 
-        request = mt4.requests.WatchSymbolRequest(symbol)
+        request = requests.WatchSymbolRequest(symbol)
         self._send_request(request)
 
         self._sub_socket.subscribe('tick.' + symbol)
         self._subscribed_symbols.add(symbol)
 
     def subscribe_all(self):
-        request  = mt4.requests.WatchSymbolRequest('*')
-        response = mt4.responses.WatchSymbolResponse(self._send_request(request))
+        request  = requests.WatchSymbolRequest('*')
+        response = responses.WatchSymbolResponse(self._send_request(request))
         
         for symbol in response.symbols():
             if isinstance(symbol, str):
@@ -196,13 +196,13 @@ class MetaTrader4(Exchange):
         opcode = None
 
         if order_type == OrderType.MARKET_ORDER:
-            opcode = mt4.OperationCode.BUY if side == Side.BUY else mt4.OperationCode.SELL
+            opcode = OperationCode.BUY if side == Side.BUY else OperationCode.SELL
 
         elif order_type == OrderType.LIMIT_ORDER:
-            opcode = mt4.OperationCode.BUY_LIMIT if side == Side.BUY else mt4.OperationCode.SELL_LIMIT
+            opcode = OperationCode.BUY_LIMIT if side == Side.BUY else OperationCode.SELL_LIMIT
 
         elif order_type == OrderType.STOP_ORDER:
-            opcode = mt4.OperationCode.BUY_STOP if side == Side.BUY else mt4.OperationCode.SELL_STOP
+            opcode = OperationCode.BUY_STOP if side == Side.BUY else OperationCode.SELL_STOP
 
         else:
             raise ValueError(
@@ -210,7 +210,7 @@ class MetaTrader4(Exchange):
                 % (order_type, type(OrderType))
             )
 
-        request = mt4.requests.PlaceOrderRequest(
+        request = requests.PlaceOrderRequest(
             symbol,
             opcode,
             lots,
@@ -223,7 +223,7 @@ class MetaTrader4(Exchange):
             expiration
         )
 
-        response = mt4.responses.PlaceOrderResponse(self._send_request(request))
+        response = responses.PlaceOrderResponse(self._send_request(request))
 
         order_info = response.order_info()
 
@@ -286,7 +286,7 @@ class MetaTrader4(Exchange):
                      price:       Optional[float]    = None,
                      expiration:  Optional[datetime] = None
     ):
-        request = mt4.requests.ModifyOrderRequest(
+        request = requests.ModifyOrderRequest(
             ticket,
             stop_loss,
             take_profit,
@@ -311,8 +311,8 @@ class MetaTrader4(Exchange):
                     slippage: int             = 0,
                     lots:     Optional[float] = None
     ) -> int:
-        request  = mt4.requests.CloseOrderRequest(ticket, price, slippage, lots)
-        response = mt4.responses.CloseOrderResponse(self._send_request(request))
+        request  = requests.CloseOrderRequest(ticket, price, slippage, lots)
+        response = responses.CloseOrderResponse(self._send_request(request))
 
         # order._status      = OrderStatus.CLOSED
         # order._lots        = response.lots()
@@ -348,8 +348,8 @@ class MetaTrader4(Exchange):
 
     def get_order(self, ticket: int) -> Order:
         if ticket not in self._orders:
-            request  = mt4.requests.GetOrderRequest(ticket)
-            response = mt4.responses.GetOrderResponse(self._send_request(request))
+            request  = requests.GetOrderRequest(ticket)
+            response = responses.GetOrderResponse(self._send_request(request))
 
             self._orders[ticket] = response.order()
 
@@ -371,7 +371,7 @@ class MetaTrader4(Exchange):
     #===============================================================================
     # Internals (U Can't Touch This)
     #===============================================================================
-    def _parse_response(self, response: str) -> Tuple[mt4.CommandResultCode, Optional[mt4.Content]]:
+    def _parse_response(self, response: str) -> Tuple[CommandResultCode, Optional[Content]]:
         sep_index  = response.find(' ')
         cmd_result = None
 
@@ -393,9 +393,9 @@ class MetaTrader4(Exchange):
                     % type(content)
                 )
         
-        return mt4.CommandResultCode(cmd_result), content
+        return CommandResultCode(cmd_result), content
 
-    def _send_request(self, request: mt4.requests.Request) -> mt4.Content:
+    def _send_request(self, request: requests.Request) -> Content:
         cmd = request.command
 
         if cmd == '':
@@ -434,8 +434,8 @@ class MetaTrader4(Exchange):
         if content is None:
             content = {}
 
-        if cmd_result != mt4.CommandResultCode.SUCCESS:
-            mt4.raise_error(cmd, cmd_result, content)
+        if cmd_result != CommandResultCode.SUCCESS:
+            raise_error(cmd, cmd_result, content)
 
         return content
 
