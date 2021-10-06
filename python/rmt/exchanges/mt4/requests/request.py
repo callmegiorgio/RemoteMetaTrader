@@ -1,7 +1,8 @@
-from .. import Content
+from rmt import error
+from ..  import Content
 
 class Request:
     command = ''
 
     def content(self) -> Content:
-        raise NotImplementedError('%s.%s not implemented' % (self.__name__, self.content.__name__))
+        raise error.NotImplementedException(self.__class__, 'content')

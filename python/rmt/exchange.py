@@ -1,7 +1,7 @@
 from datetime     import datetime
 from typing       import Dict, List, Optional, Set
 from PyQt5.QtCore import QObject, pyqtSignal
-from rmt          import Side, Order, Tick, Bar, OrderType, Timeframe, Instrument
+from rmt          import Side, Order, Tick, Bar, OrderType, Timeframe, Instrument, error
 
 class Exchange(QObject):
     """Provides access to market data and allows execution of trades."""
@@ -95,10 +95,7 @@ class Exchange(QObject):
         return Tick()
 
     def get_instrument(self, symbol: str) -> Instrument:
-        raise NotImplementedError(
-            '%s.%s is not implemented'
-            % (Exchange.__name__, 'get_instrument')
-        )
+        raise error.NotImplementedException(self.__class__, 'get_instrument')
 
     def get_history_bars(self,
                          symbol:     str,
@@ -106,13 +103,7 @@ class Exchange(QObject):
                          end_time:   Optional[datetime] = None,
                          timeframe:  Timeframe = Timeframe.M1
     ) -> List[Bar]:
-        """TODO
-
-        If `start_time` is None, defaults to first bar time.
-        If `end_time` is None, defaults to last bar time.
-        """
-
-        return []
+        raise error.NotImplementedException(self.__class__, 'get_history_bars')
     
     def get_history_bar(self,
                         symbol:    str,
@@ -132,10 +123,7 @@ class Exchange(QObject):
                         symbol:    str,
                         timeframe: Timeframe = Timeframe.M1
     ) -> Bar:
-        raise NotImplementedError(
-            '%s.%s is not implemented'
-            % (Exchange.__name__, Exchange.get_current_bar.__name__)
-        )
+        raise error.NotImplementedException(self.__class__, 'get_current_bar')
 
     def subscribe(self, symbol: str):
         """Begins to receive quote updates of an instrument.
@@ -147,37 +135,28 @@ class Exchange(QObject):
 
         Raises
         ------
-        NotImplementedError
-            If method is not implemented by a subclass.
-
         UnknownSymbol
             If symbol is not recognized by the exchange.
         """
 
-        raise NotImplementedError(self.subscribe.__name__)
+        raise error.NotImplementedException(self.__class__, 'subscribe')
 
     def subscribe_all(self):
         """Begins to receive quote updates of all instruments.
 
         Raises
         ------
-        NotImplementedError
-            If method is not implemented by a subclass.
-        
         RequestError
             If request could not be delivered to, or understood by the exchange.
         """
 
-        raise NotImplementedError(self.subscribe_all.__name__)
+        raise error.NotImplementedException(self.__class__, 'subscribe_all')
 
     def unsubscribe(self, symbol: str):
         """Stops receiving quote updates of an instrument.
 
         Raises
         ------
-        NotImplementedError
-            If method is not implemented by a subclass.
-
         RequestError
             If request could not be delivered to, or understood by the exchange.
 
@@ -185,26 +164,23 @@ class Exchange(QObject):
             If symbol is not recognized by the exchange.
         """
 
-        raise NotImplementedError(self.unsubscribe.__name__)
+        raise error.NotImplementedException(self.__class__, 'unsubscribe')
 
     def unsubscribe_all(self):
         """Stops receiving quote updates of all instruments.
 
         Raises
         ------
-        NotImplementedError
-            If method is not implemented by a subclass.
-
         RequestError
             If request could not be delivered to, or understood by the exchange.
         """
 
-        raise NotImplementedError(self.unsubscribe_all.__name__)
+        raise error.NotImplementedException(self.__class__, 'unsubscribe_all')
 
     def subscriptions(self) -> Set[str]:
         """Returns the symbols of all subscribed trading instruments."""
 
-        return set()
+        raise error.NotImplementedException(self.__class__, 'subscriptions')
 
     def place_order(self,
                     symbol:       str,
@@ -306,10 +282,8 @@ class Exchange(QObject):
         int
             Ticket that identifies the placed order.
         """
-        raise NotImplementedError(
-            '%s.%s is not implemented'
-            % (Exchange.__name__, Exchange.place_order.__name__)
-        )
+
+        raise error.NotImplementedException(self.__class__, 'place_order')
 
     def modify_order(self,
                      ticket:      int,
@@ -349,10 +323,7 @@ class Exchange(QObject):
             If ...
         """
 
-        raise NotImplementedError(
-            '%s.%s is not implemented'
-            % (Exchange.__name__, Exchange.modify_order.__name__)
-        )
+        raise error.NotImplementedException(self.__class__, 'modify_order')
 
     def close_order(self,
                     ticket:   int,
@@ -408,10 +379,7 @@ class Exchange(QObject):
             ...
         """
 
-        raise NotImplementedError(
-            '%s.%s is not implemented'
-            % (Exchange.__name__, Exchange.close_order.__name__)
-        )
+        raise error.NotImplementedException(self.__class__, 'close_order')
 
     def get_order(self, ticket: int) -> Order:
         """Retrieves information about an order.
@@ -452,19 +420,10 @@ class Exchange(QObject):
             object storing information about an order.
         """
 
-        raise NotImplementedError(
-            '%s.%s is not implemented'
-            % (Exchange.__name__, Exchange.get_order.__name__)
-        )
+        raise error.NotImplementedException(self.__class__, 'place_order')
 
     def orders(self) -> Dict[int, Order]:
-        raise NotImplementedError(
-            '%s.%s is not implemented'
-            % (Exchange.__name__, Exchange.orders.__name__)
-        )
+        raise error.NotImplementedException(self.__class__, 'orders')
 
     def process_events(self):
-        raise NotImplementedError(
-            '%s.%s is not implemented'
-            % (Exchange.__name__, Exchange.process_events.__name__)
-        )
+        raise error.NotImplementedException(self.__class__, 'process_events')

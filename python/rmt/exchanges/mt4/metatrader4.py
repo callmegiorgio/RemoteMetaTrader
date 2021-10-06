@@ -407,7 +407,7 @@ class MetaTrader4(Exchange):
         try:
             content      = json.dumps(request.content())
             request: str = '%s %s' % (cmd, content)            
-        except (NotImplementedError, ValueError) as e:
+        except (error.NotImplementedException, ValueError) as e:
             raise error.RequestError('failed to serialize JSON request: %s' % e)
 
         response: str = ''
