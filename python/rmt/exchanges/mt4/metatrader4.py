@@ -323,35 +323,42 @@ class MetaTrader4(Exchange):
         request  = requests.CloseOrderRequest(ticket, price, slippage, lots)
         response = responses.CloseOrderResponse(self._send_request(request))
 
-        # order._status      = OrderStatus.CLOSED
-        # order._lots        = response.lots()
-        # order._close_price = response.close_price()
-        # order._close_time  = response.close_time()
-        # order._comment     = response.comment()
-        # order._commission  = response.commission()
-        # order._profit      = response.profit()
-        # order._swap        = response.swap()
+        if ticket in self._orders:
+            order = self._orders[ticket]
 
-        if response.new_order():
-            ticket = response.new_order().ticket()
+            order._status      = OrderStatus.CLOSED
+            order._lots        = response.lots()
+            order._close_price = response.close_price()
+            order._close_time  = response.close_time()
+            order._comment     = response.comment()
+            order._commission  = response.commission()
+            order._profit      = response.profit()
+            order._swap        = response.swap()
 
-        #     order = Order(
-        #         ticket       = response.new_order_ticket(),
-        #         symbol       = order.symbol(),
-        #         side         = order.side(),
-        #         type         = order.type(),
-        #         lots         = response.new_order_lots(),
-        #         status       = OrderStatus.FILLED,
-        #         open_price   = order.open_price(),
-        #         open_time    = order.open_time(),
-        #         stop_loss    = order.stop_loss(),
-        #         take_profit  = order.take_profit(),
-        #         magic_number = response.new_order_magic_number(),
-        #         comment      = response.new_order_comment(),
-        #         commission   = response.new_order_commission(),
-        #         profit       = response.new_order_profit(),
-        #         swap         = response.new_order_swap()
-        #     )
+        new_order = response.new_order()
+
+        if new_order is not None:
+            ticket = new_order.ticket()
+
+            order = Order(
+                ticket       = new_order.ticket(),
+                symbol       = order.symbol(),
+                side         = order.side(),
+                type         = order.type(),
+                lots         = new_order.lots(),
+                status       = OrderStatus.FILLED,
+                open_price   = order.open_price(),
+                open_time    = order.open_time(),
+                stop_loss    = order.stop_loss(),
+                take_profit  = order.take_profit(),
+                magic_number = new_order.magic_number(),
+                comment      = new_order.comment(),
+                commission   = new_order.commission(),
+                profit       = new_order.profit(),
+                swap         = new_order.swap()
+            )
+
+            self._orders[ticket] = order
 
         return ticket
 
