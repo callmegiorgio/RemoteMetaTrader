@@ -10,7 +10,7 @@
 /// TODO
 class Server {
 public:
-    Server(string shared_name);
+    Server(string shared_name = "__RMT_Exp3rt_;D__");
 
     ~Server();
 
