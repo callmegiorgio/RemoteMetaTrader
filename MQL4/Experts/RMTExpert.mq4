@@ -90,9 +90,9 @@ void on_tester_tick()
 {
     const Time current_time = Time::now();
 
-    // When running the expert on Strategy Tester, the below call to sleep() will slow
-    // down the Tester's execution. To speed things up, we can ignore bars that aren't
-    // relevant in a strategy by specifying a start and stop time for the Tester.
+    // When running the expert on Strategy Tester, the below call to `RequestProcessor`
+    // will slow down the Tester's execution. To speed things up, we can ignore bars
+    // that aren't relevant in a strategy by specifying a start and stop time.
     if (current_time < testing_start_time)
         return;
     
@@ -110,11 +110,9 @@ void on_tester_tick()
     //
     // After the above call to `tick_event_publisher.process_events()` returns, new
     // tick events may have been sent to clients, which in turn may make clients
-    // process them and want to place orders in that tick. So, we force the server
-    // to sleep for a while to give clients enough time to receive and process new
-    // ticks, and then we process any further client requests.
-    //
-    // This is required, since `RequestProcessor` is called before event publishers.
+    // process them and want to place orders on that tick. So, the server waits a
+    // while to receive further client requests in case a client decides to place,
+    // close, or modify an order, or do anything on that tick we just sent.
     //
     // Here's an example to illustrate this. Say a tick of a trading instrument is
     // 200.16. A client that's interested in such an instrument receives this tick
@@ -126,16 +124,12 @@ void on_tester_tick()
     // be placed at 200.18 instead of the desired 200.16.
     //
     // Thus, by calling the `RequestProcessor` another time, we make sure clients
-    // will place orders on the latest ticks on Strategy Tester; and by calling
-    // `sleep()` before it, we make sure clients will have enough time to receive
-    // and process ticks, as otherwise a call to `RequestProcessor` may return
-    // prematurely for not having received any requests.
+    // will place or close orders on the latest ticks on Strategy Tester.
     //
     // None of this is required when the expert is attached to a chart, that is,
     // when it's not run by the Strategy Tester, because `OnTimer()` will be called
     // and requests will be eventually processed.
     //==============================================================================
-    sleep(1);
     request_processor.process_requests();
 }
 

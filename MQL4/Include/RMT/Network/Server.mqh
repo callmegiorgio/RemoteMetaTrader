@@ -10,6 +10,9 @@
 /// TODO
 class Server {
 public:
+    /// Time in milliseconds to wait for a request while on Strategy Tester.
+    static const uint TESTER_RECV_TIMEOUT;
+
     Server(string shared_name = "__RMT_Exp3rt_;D__");
 
     ~Server();
@@ -18,8 +21,25 @@ public:
 
     void stop();
     
-    /// TODO
+    ////////////////////////////////////////////////////////////////////////////////
+    /// Receives a request on the REP socket.
+    ///
+    /// If a request that was sent by a client is pending on the REP socket's queue,
+    /// pops that request from the queue into `request` and returns `true`.
+    /// Otherwise, if either no request is pending on the queue or an error occurs,
+    /// returns `false`.
+    ///
+    /// If the Expert is being run by Strategy Tester, calling this method blocks
+    /// until a request is received or until `TESTER_RECV_TIMEOUT` milliseconds have
+    /// elapsed. Otherwise, if this method is not run by Strategy Tester, returns
+    /// immediately if no request is pending.
+    ///
+    /// @param request Destination where the received request is written to.
+    /// @return `true` if a request was received, and `false` otherwise.
+    ///
+    ////////////////////////////////////////////////////////////////////////////////
     bool recv_request(string& request);
+
     bool send_response(string response);
 
     bool publish_event(string event);
@@ -42,6 +62,8 @@ private:
 //===========================================================================
 // --- Server implementation ---
 //===========================================================================
+static const uint Server::TESTER_RECV_TIMEOUT = 10;
+
 int Server::last_error_number()
 {
     return Zmq::errorNumber();
@@ -95,6 +117,12 @@ bool Server::start_rep_socket(string addr)
         return false;
     }
 
+    if (IsTesting() && !m_rep_socket.set_recv_timeout(TESTER_RECV_TIMEOUT))
+    {
+        Print("Failed to set receive timeout on REP socket");
+        return false;
+    }
+
     Print("Listening for incoming requests on (REP) socket: ", m_rep_socket.address());
     return true;
 }
@@ -141,7 +169,9 @@ void Server::stop_pub_socket()
 
 bool Server::recv_request(string& request)
 {
-    if (m_rep_socket.recv(request, ZMQ_DONTWAIT))
+    const int flags = IsTesting() ? 0 : ZMQ_DONTWAIT;
+
+    if (m_rep_socket.recv(request, flags))
         return true;
 
     if (last_error_number() != EAGAIN)
