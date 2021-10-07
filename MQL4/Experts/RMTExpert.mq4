@@ -90,9 +90,9 @@ void on_tester_tick()
 {
     const Time current_time = Time::now();
 
-    // When running the expert on Strategy Test, the below call to sleep() will slow
+    // When running the expert on Strategy Tester, the below call to sleep() will slow
     // down the Tester's execution. To speed things up, we can ignore bars that aren't
-    // relevant in a strategy
+    // relevant in a strategy by specifying a start and stop time for the Tester.
     if (current_time < testing_start_time)
         return;
     
