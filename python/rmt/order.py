@@ -117,6 +117,12 @@ class Order:
     def swap(self) -> float:
         return self._swap
 
+    def is_buy(self) -> bool:
+        return self._side == Side.BUY
+
+    def is_sell(self) -> bool:
+        return self._side == Side.SELL
+
     def duration(self) -> timedelta:
         if self.close_time() > self.open_time():
             return self.close_time() - self.open_time()
