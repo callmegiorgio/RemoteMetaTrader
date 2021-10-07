@@ -39,6 +39,7 @@ class Performance(SlottedClass):
 
             if profit == 0:
                 self._even_count += 1
+                continue
 
             tp = order.take_profit()
             sl = order.stop_loss()
