@@ -1,7 +1,8 @@
 from datetime     import datetime
 from typing       import Dict, List, Optional, Set
 from PyQt5.QtCore import QObject, pyqtSignal
-from rmt          import Side, Order, Tick, Bar, OrderType, Timeframe, Instrument, error
+from rmt          import (Side, Order, Tick, Bar, OrderType, Timeframe,
+                          Instrument, Account, error)
 
 class Exchange(QObject):
     """Provides access to market data and allows execution of trades."""
@@ -89,10 +90,14 @@ class Exchange(QObject):
 
         self._closed_bars: Dict[str, List[Bar]] = {}
 
+    @property
+    def account(self) -> Account:
+        raise error.NotImplementedException(self.__class__, 'account')
+
     def get_tick(self, symbol: str) -> Tick:
         """Returns the last quotes of an instrument."""
 
-        return Tick()
+        return error.NotImplementedException(self.__class__, 'get_tick')
 
     def get_instrument(self, symbol: str) -> Instrument:
         raise error.NotImplementedException(self.__class__, 'get_instrument')

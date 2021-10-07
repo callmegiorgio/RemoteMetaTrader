@@ -1,3 +1,4 @@
+from .get_account      import GetAccountResponse
 from .get_tick         import GetTickResponse
 from .get_instrument   import GetInstrumentResponse
 from .get_current_bar  import GetCurrentBarResponse

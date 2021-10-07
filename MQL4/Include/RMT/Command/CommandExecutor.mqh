@@ -14,7 +14,11 @@ public:
     CommandExecutor(TickEventPublisher& tick_publisher);
 
 private:
-    CommandResult execute(const WatchSymbolRequest&    request) override;
+    CommandResult execute(GetAccountResponse& response) override;
+
+    CommandResult execute(const WatchSymbolRequest& request) override;
+    CommandResult execute(const ModifyOrderRequest& request) override;
+
     CommandResult execute(const GetTickRequest&        request, GetTickResponse&        response) override;
     CommandResult execute(const GetInstrumentRequest&  request, GetInstrumentResponse&  response) override;
     CommandResult execute(const GetCurrentBarRequest&  request, GetCurrentBarResponse&  response) override;
@@ -22,7 +26,6 @@ private:
     CommandResult execute(const GetOrderRequest&       request, GetOrderResponse&       response) override;
     CommandResult execute(const PlaceOrderRequest&     request, PlaceOrderResponse&     response) override;
     CommandResult execute(const CloseOrderRequest&     request, CloseOrderResponse&     response) override;
-    CommandResult execute(const ModifyOrderRequest&    request) override;
 
     TickEventPublisher* m_tick_publisher;
 };
@@ -33,6 +36,29 @@ private:
 CommandExecutor::CommandExecutor(TickEventPublisher& tick_publisher)
 {
     m_tick_publisher = GetPointer(tick_publisher);
+}
+
+CommandResult CommandExecutor::execute(GetAccountResponse& response) override
+{
+    response.login          = AccountInfoInteger(ACCOUNT_LOGIN);
+    response.name           = AccountInfoString (ACCOUNT_NAME);
+    response.server         = AccountInfoString (ACCOUNT_SERVER);
+    response.company        = AccountInfoString (ACCOUNT_COMPANY);
+    response.mode           = ENUM_ACCOUNT_TRADE_MODE(AccountInfoInteger(ACCOUNT_TRADE_MODE));
+    response.leverage       = AccountInfoInteger(ACCOUNT_LEVERAGE);
+    response.order_limit    = int(AccountInfoInteger(ACCOUNT_LIMIT_ORDERS));
+    response.currency       = AccountInfoString (ACCOUNT_CURRENCY);
+    response.balance        = AccountInfoDouble (ACCOUNT_BALANCE);
+    response.credit         = AccountInfoDouble (ACCOUNT_CREDIT);
+    response.profit         = AccountInfoDouble (ACCOUNT_PROFIT);
+    response.equity         = AccountInfoDouble (ACCOUNT_EQUITY);
+    response.margin         = AccountInfoDouble (ACCOUNT_EQUITY);
+    response.free_margin    = AccountInfoDouble (ACCOUNT_MARGIN_FREE);
+    response.margin_level   = AccountInfoDouble (ACCOUNT_MARGIN_LEVEL);
+    response.trade_allowed  = AccountInfoInteger(ACCOUNT_TRADE_ALLOWED) == 1;
+    response.expert_allowed = AccountInfoInteger(ACCOUNT_TRADE_EXPERT)  == 1;
+
+    return CommandResult::SUCCESS;
 }
 
 CommandResult CommandExecutor::execute(const WatchSymbolRequest& request) override

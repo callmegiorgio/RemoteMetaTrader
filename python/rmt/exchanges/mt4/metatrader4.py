@@ -6,7 +6,7 @@ from typing   import Dict, List, Optional, Set, Tuple
 from time     import sleep
 from rmt      import (error, Order, Side, OrderType,
                       Exchange, Tick, Bar, OrderStatus,
-                      Timeframe, Instrument)
+                      Timeframe, Instrument, Account)
 from . import *
 
 class MetaTrader4(Exchange):
@@ -55,6 +55,8 @@ class MetaTrader4(Exchange):
         self._subscribed_symbols: Set[str] = set()
         self._logger = logging.getLogger(MetaTrader4.__name__)
 
+        self._account: Optional[Account] = None
+
         self._instruments: Dict[str, Instrument] = {}
 
         self._orders: Dict[int, Order] = {}
@@ -84,6 +86,13 @@ class MetaTrader4(Exchange):
     def disconnect(self):
         self._req_socket.close()
         self._sub_socket.close()
+
+    @property
+    def account(self) -> Account:
+        if self._account is None:
+            self._account = self._get_account()
+
+        return self._account
 
     def get_tick(self, symbol: str) -> Tick:
         request  = requests.GetTickRequest(symbol)
@@ -371,6 +380,12 @@ class MetaTrader4(Exchange):
     #===============================================================================
     # Internals (U Can't Touch This)
     #===============================================================================
+    def _get_account(self) -> Account:
+        request  = requests.GetAccountRequest()
+        response = responses.GetAccountResponse(self._send_request(request))
+
+        return response.account()
+
     def _parse_response(self, response: str) -> Tuple[CommandResultCode, Optional[Content]]:
         sep_index  = response.find(' ')
         cmd_result = None

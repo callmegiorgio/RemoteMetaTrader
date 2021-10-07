@@ -1,4 +1,5 @@
 from .request          import Request
+from .get_account      import GetAccountRequest
 from .get_tick         import GetTickRequest
 from .get_instrument   import GetInstrumentRequest
 from .get_current_bar  import GetCurrentBarRequest

@@ -64,7 +64,20 @@ public:
     CommandResult execute(string command, const JsonValue& content);
 
 protected:
-    virtual CommandResult execute(const WatchSymbolRequest&    request) = 0;
+    //==============================================================================
+    // Response-only commands.
+    //==============================================================================
+    virtual CommandResult execute(GetAccountResponse& response) = 0;
+
+    //==============================================================================
+    // Request-only commands.
+    //==============================================================================
+    virtual CommandResult execute(const WatchSymbolRequest& request) = 0;
+    virtual CommandResult execute(const ModifyOrderRequest& request) = 0;
+
+    //==============================================================================
+    // Request-and-response commands.
+    //==============================================================================
     virtual CommandResult execute(const GetTickRequest&        request, GetTickResponse&        response) = 0;
     virtual CommandResult execute(const GetInstrumentRequest&  request, GetInstrumentResponse&  response) = 0;
     virtual CommandResult execute(const GetCurrentBarRequest&  request, GetCurrentBarResponse&  response) = 0;
@@ -72,7 +85,7 @@ protected:
     virtual CommandResult execute(const GetOrderRequest&       request, GetOrderResponse&       response) = 0;
     virtual CommandResult execute(const PlaceOrderRequest&     request, PlaceOrderResponse&     response) = 0;
     virtual CommandResult execute(const CloseOrderRequest&     request, CloseOrderResponse&     response) = 0;
-    virtual CommandResult execute(const ModifyOrderRequest&    request) = 0;
+    
 
 private:
     typedef CommandResult(*ExecuteFunctionPointer)(CommandDispatcher&, CommandArguments&);
@@ -82,17 +95,23 @@ private:
         ExecuteFunctionPointer execute;
     };
 
-    template <typename RequestType>
-    static CommandResult execute_responseless_command(CommandDispatcher& instance, CommandArguments& args);
-
-    template <typename RequestType, typename ResponseType>
-    static CommandResult execute_responseful_command(CommandDispatcher& instance, CommandArguments& args);
+    template <typename ResponseType>
+    static CommandResult execute_response_only_command(CommandDispatcher& instance, CommandArguments& args);
 
     template <typename RequestType>
-    void register_responseless_command(string command);
+    static CommandResult execute_request_only_command(CommandDispatcher& instance, CommandArguments& args);
 
     template <typename RequestType, typename ResponseType>
-    void register_responseful_command(string command);
+    static CommandResult execute_request_response_command(CommandDispatcher& instance, CommandArguments& args);
+
+    template <typename ResponseType>
+    void register_response_only_command(string command);
+
+    template <typename RequestType>
+    void register_request_only_command(string command);
+
+    template <typename RequestType, typename ResponseType>
+    void register_request_response_command(string command);
 
     void register_command(string command, ExecuteFunctionPointer execute_fn);
 
@@ -102,8 +121,24 @@ private:
 //===========================================================================
 // --- CommandDispatcher implementation ---
 //===========================================================================
+template <typename ResponseType>
+static CommandResult CommandDispatcher::execute_response_only_command(CommandDispatcher& instance, CommandArguments&)
+{
+    ResponseType response;
+    CommandResult cmd_result = instance.execute(response);
+
+    if (cmd_result.code() == CommandResult::SUCCESS)
+    {
+        JsonWriter writer(cmd_result.message());
+
+        writer.write(response);
+    }
+
+    return cmd_result;
+}
+
 template <typename RequestType>
-static CommandResult CommandDispatcher::execute_responseless_command(CommandDispatcher& instance, CommandArguments& args)
+static CommandResult CommandDispatcher::execute_request_only_command(CommandDispatcher& instance, CommandArguments& args)
 {
     RequestType request;
 
@@ -114,7 +149,7 @@ static CommandResult CommandDispatcher::execute_responseless_command(CommandDisp
 }
 
 template <typename RequestType, typename ResponseType>
-static CommandResult CommandDispatcher::execute_responseful_command(CommandDispatcher& instance, CommandArguments& args)
+static CommandResult CommandDispatcher::execute_request_response_command(CommandDispatcher& instance, CommandArguments& args)
 {
     RequestType request;
 
@@ -136,16 +171,18 @@ static CommandResult CommandDispatcher::execute_responseful_command(CommandDispa
 
 CommandDispatcher::CommandDispatcher()
 {
-    register_responseless_command<WatchSymbolRequest>("watchSymbol");
-    register_responseless_command<ModifyOrderRequest>("modifyOrder");
+    register_response_only_command<GetAccountResponse>("getAccount");
 
-    register_responseful_command<GetTickRequest,        GetTickResponse       >("getTick");
-    register_responseful_command<GetInstrumentRequest,  GetInstrumentResponse >("getInstrument");
-    register_responseful_command<GetCurrentBarRequest,  GetCurrentBarResponse >("getCurrentBar");
-    register_responseful_command<GetHistoryBarsRequest, GetHistoryBarsResponse>("getHistoryBars");
-    register_responseful_command<GetOrderRequest,       GetOrderResponse      >("getOrder");
-    register_responseful_command<PlaceOrderRequest,     PlaceOrderResponse    >("placeOrder");
-    register_responseful_command<CloseOrderRequest,     CloseOrderResponse    >("closeOrder");
+    register_request_only_command<WatchSymbolRequest>("watchSymbol");
+    register_request_only_command<ModifyOrderRequest>("modifyOrder");
+
+    register_request_response_command<GetTickRequest,        GetTickResponse       >("getTick");
+    register_request_response_command<GetInstrumentRequest,  GetInstrumentResponse >("getInstrument");
+    register_request_response_command<GetCurrentBarRequest,  GetCurrentBarResponse >("getCurrentBar");
+    register_request_response_command<GetHistoryBarsRequest, GetHistoryBarsResponse>("getHistoryBars");
+    register_request_response_command<GetOrderRequest,       GetOrderResponse      >("getOrder");
+    register_request_response_command<PlaceOrderRequest,     PlaceOrderResponse    >("placeOrder");
+    register_request_response_command<CloseOrderRequest,     CloseOrderResponse    >("closeOrder");
 }
 
 CommandDispatcher::~CommandDispatcher()
@@ -154,16 +191,22 @@ CommandDispatcher::~CommandDispatcher()
         delete wrapper;
 }
 
-template <typename RequestType>
-void CommandDispatcher::register_responseless_command(string command)
+template <typename ResponseType>
+void CommandDispatcher::register_response_only_command(string command)
 {
-    register_command(command, execute_responseless_command<RequestType>);
+    register_command(command, execute_response_only_command<ResponseType>);
+}
+
+template <typename RequestType>
+void CommandDispatcher::register_request_only_command(string command)
+{
+    register_command(command, execute_request_only_command<RequestType>);
 }
 
 template <typename RequestType, typename ResponseType>
-void CommandDispatcher::register_responseful_command(string command)
+void CommandDispatcher::register_request_response_command(string command)
 {
-    register_command(command, execute_responseful_command<RequestType, ResponseType>);
+    register_command(command, execute_request_response_command<RequestType, ResponseType>);
 }
 
 void CommandDispatcher::register_command(string command, ExecuteFunctionPointer execute_fn)
