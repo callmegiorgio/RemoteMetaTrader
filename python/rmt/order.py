@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from enum     import IntEnum
-from pprint   import pformat
 from typing   import Optional
+from rmt      import SlottedClass
 
 class Side(IntEnum):
     """Trade side or direction."""
@@ -26,8 +26,28 @@ class OrderStatus(IntEnum):
     FILLED           = 4
     CLOSED           = 5
 
-class Order:
+class Order(SlottedClass):
     """Stores information about an order."""
+
+    __slots__ = [
+        '_symbol',
+        '_side',
+        '_type',
+        '_lots',
+        '_status',
+        '_open_price',
+        '_open_time',
+        '_close_price',
+        '_close_time',
+        '_stop_loss',
+        '_take_profit',
+        '_expiration',
+        '_magic_number',
+        '_comment',
+        '_commission',
+        '_profit',
+        '_swap'
+    ]
 
     def __init__(self,
                  symbol:       str,
@@ -128,6 +148,3 @@ class Order:
             return self.close_time() - self.open_time()
         else:
             return datetime.now(timezone.utc) - self.open_time()
-
-    def __repr__(self) -> str:
-        return pformat(vars(self), indent=4, width=1)

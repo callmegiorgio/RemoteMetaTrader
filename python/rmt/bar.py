@@ -1,8 +1,17 @@
 from datetime import datetime
 from typing   import Optional
-from rmt      import Side
+from rmt      import Side, SlottedClass
 
-class Bar:
+class Bar(SlottedClass):
+    __slots__ = [
+        '_time',
+        '_open',
+        '_high',
+        '_low',
+        '_close',
+        '_volume'
+    ]
+
     def __init__(self,
                  time:   datetime,
                  open:   float,

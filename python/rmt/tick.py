@@ -1,8 +1,11 @@
 from datetime import datetime, timezone
-from typing import Tuple
+from typing   import Tuple
+from rmt      import SlottedClass
 
-class Tick:
+class Tick(SlottedClass):
     """Stores the quotes of an instrument."""
+
+    __slots__ = [ '_server_time', '_bid', '_ask' ]
 
     def __init__(self,
                  server_time: datetime = datetime.fromtimestamp(0, timezone.utc),
