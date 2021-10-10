@@ -102,6 +102,20 @@ class Exchange(QObject):
     def get_instrument(self, symbol: str) -> Instrument:
         raise error.NotImplementedException(self.__class__, 'get_instrument')
 
+    def get_bar(self,
+                symbol: str,
+                index: int = 0,
+                timeframe: Timeframe = Timeframe.M1
+    ) -> Bar:
+        """Retrieves a bar of symbol at index.
+        
+        The method `get_bar()` retrieves a bar in a symbol's list of bars ordered
+        descendingly by open time. That is, from the most recent bar to the least
+        recent one.
+        """
+
+        raise error.NotImplementedException(self.__class__, 'get_bar')
+
     def get_history_bars(self,
                          symbol:     str,
                          start_time: Optional[datetime] = None,
@@ -123,12 +137,6 @@ class Exchange(QObject):
             return None
         
         return bars[0]
-
-    def get_current_bar(self,
-                        symbol:    str,
-                        timeframe: Timeframe = Timeframe.M1
-    ) -> Bar:
-        raise error.NotImplementedException(self.__class__, 'get_current_bar')
 
     def subscribe(self, symbol: str):
         """Begins to receive quote updates of an instrument.

@@ -6,15 +6,17 @@
 /// Request:
 /// {
 ///   "symbol":    string,
+///   "index":     integer,
 ///   "timeframe": string
 /// }
-class GetCurrentBarRequest {
+class GetBarRequest {
 public:
     bool deserialize(JsonReader& reader)
     {
         string timeframe_str;
 
         if (!reader.read_required("symbol",    this.symbol))   return false;
+        if (!reader.read_required("index",     this.index))    return false;
         if (!reader.read_required("timeframe", timeframe_str)) return false;
 
         if      (timeframe_str == "M1")  this.timeframe = PERIOD_M1;
@@ -32,5 +34,6 @@ public:
     }
 
     string          symbol;
+    int             index;
     ENUM_TIMEFRAMES timeframe;
 };

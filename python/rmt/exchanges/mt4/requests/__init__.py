@@ -2,7 +2,7 @@ from .request          import Request
 from .get_account      import GetAccountRequest
 from .get_tick         import GetTickRequest
 from .get_instrument   import GetInstrumentRequest
-from .get_current_bar  import GetCurrentBarRequest
+from .get_bar          import GetBarRequest
 from .get_history_bars import GetHistoryBarsRequest
 from .get_order        import GetOrderRequest
 from .watch_symbol     import WatchSymbolRequest

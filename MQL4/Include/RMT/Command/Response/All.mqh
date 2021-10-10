@@ -3,7 +3,7 @@
 // Local
 #include "CloseOrderResponse.mqh"
 #include "GetAccountResponse.mqh"
-#include "GetCurrentBarResponse.mqh"
+#include "GetBarResponse.mqh"
 #include "GetHistoryBarsResponse.mqh"
 #include "GetInstrumentResponse.mqh"
 #include "GetOrderResponse.mqh"

@@ -3,7 +3,7 @@
 // Local
 #include "CancelOrderRequest.mqh"
 #include "CloseOrderRequest.mqh"
-#include "GetCurrentBarRequest.mqh"
+#include "GetBarRequest.mqh"
 #include "GetHistoryBarsRequest.mqh"
 #include "GetInstrumentRequest.mqh"
 #include "GetOrderRequest.mqh"

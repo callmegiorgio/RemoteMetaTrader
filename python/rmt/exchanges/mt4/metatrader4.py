@@ -138,12 +138,13 @@ class MetaTrader4(Exchange):
         
         return response.bars()
 
-    def get_current_bar(self,
-                        symbol:    str,
-                        timeframe: Timeframe = Timeframe.M1
+    def get_bar(self,
+                symbol: str,
+                index: int = 0,
+                timeframe: Timeframe = Timeframe.M1
     ) -> Bar:
-        request  = requests.GetCurrentBarRequest(symbol, timeframe)
-        response = responses.GetCurrentBarResponse(self._send_request(request))
+        request  = requests.GetBarRequest(symbol, index, timeframe)
+        response = responses.GetBarResponse(self._send_request(request))
 
         return response.bar()
 

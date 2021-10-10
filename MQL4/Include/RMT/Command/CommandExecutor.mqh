@@ -22,7 +22,7 @@ private:
 
     CommandResult execute(const GetTickRequest&        request, GetTickResponse&        response) override;
     CommandResult execute(const GetInstrumentRequest&  request, GetInstrumentResponse&  response) override;
-    CommandResult execute(const GetCurrentBarRequest&  request, GetCurrentBarResponse&  response) override;
+    CommandResult execute(const GetBarRequest&         request, GetBarResponse&         response) override;
     CommandResult execute(const GetHistoryBarsRequest& request, GetHistoryBarsResponse& response) override;
     CommandResult execute(const GetOrderRequest&       request, GetOrderResponse&       response) override;
     CommandResult execute(const PlaceOrderRequest&     request, PlaceOrderResponse&     response) override;
@@ -117,16 +117,16 @@ CommandResult CommandExecutor::execute(const GetInstrumentRequest& request, GetI
     return CommandResult::SUCCESS;
 }
 
-CommandResult CommandExecutor::execute(const GetCurrentBarRequest& request, GetCurrentBarResponse& response) override
+CommandResult CommandExecutor::execute(const GetBarRequest& request, GetBarResponse& response) override
 {
     ResetLastError();
 
-    response.time   = iTime  (request.symbol, request.timeframe, 0);
-    response.open   = iOpen  (request.symbol, request.timeframe, 0);
-    response.high   = iHigh  (request.symbol, request.timeframe, 0);
-    response.low    = iLow   (request.symbol, request.timeframe, 0);
-    response.close  = iClose (request.symbol, request.timeframe, 0);
-    response.volume = iVolume(request.symbol, request.timeframe, 0);
+    response.time   = iTime  (request.symbol, request.timeframe, request.index);
+    response.open   = iOpen  (request.symbol, request.timeframe, request.index);
+    response.high   = iHigh  (request.symbol, request.timeframe, request.index);
+    response.low    = iLow   (request.symbol, request.timeframe, request.index);
+    response.close  = iClose (request.symbol, request.timeframe, request.index);
+    response.volume = iVolume(request.symbol, request.timeframe, request.index);
 
     return GetLastError();
 }

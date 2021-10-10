@@ -5,7 +5,7 @@
 
 /// Response:
 /// [datetime, double, double, double, double, integer]
-class GetCurrentBarResponse {
+class GetBarResponse {
 public:
     void write(JsonWriter& writer) const
     {

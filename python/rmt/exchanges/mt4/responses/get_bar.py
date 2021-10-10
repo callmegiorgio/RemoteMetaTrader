@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from rmt      import Bar, jsonutil
 from ..       import Content
 
-class GetCurrentBarResponse:
+class GetBarResponse:
     def __init__(self, content: Content):
         t = jsonutil.read_required(content, 0, int)
         o = jsonutil.read_required(content, 1, float)
