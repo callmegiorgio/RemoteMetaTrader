@@ -1,10 +1,11 @@
 import zmq
 import json
 import logging
+import rmt
 from datetime import datetime
 from typing   import Dict, List, Optional, Set, Tuple
 from time     import sleep
-from rmt      import (error, Order, Side, OrderType,
+from rmt      import (Order, Side, OrderType,
                       Exchange, Tick, Bar, OrderStatus,
                       Timeframe, Instrument, Account)
 from . import *
@@ -153,7 +154,14 @@ class MetaTrader4(Exchange):
             return
 
         request = requests.WatchSymbolRequest(symbol)
-        self._send_request(request)
+
+        try:
+            self._send_request(request)
+        except MQL4Error as e:
+            if e.code == CommandResultCode.UNKNOWN_SYMBOL:
+                raise rmt.error.InvalidSymbol(symbol)
+            else:
+                raise e
 
         self._sub_socket.subscribe('tick.' + symbol)
         self._subscribed_symbols.add(symbol)
@@ -197,13 +205,9 @@ class MetaTrader4(Exchange):
         if symbol == '':
             raise ValueError('instrument symbol must not be empty')
 
-        if side not in [Side.BUY, Side.SELL]:
-            raise ValueError(
-                "invalid value %s for type '%s'"
-                % (side, type(Side))
-            )
-
-        opcode = None
+        side       = Side(side)
+        order_type = OrderType(order_type)
+        opcode     = None
 
         if order_type == OrderType.MARKET_ORDER:
             opcode = OperationCode.BUY if side == Side.BUY else OperationCode.SELL
@@ -211,14 +215,8 @@ class MetaTrader4(Exchange):
         elif order_type == OrderType.LIMIT_ORDER:
             opcode = OperationCode.BUY_LIMIT if side == Side.BUY else OperationCode.SELL_LIMIT
 
-        elif order_type == OrderType.STOP_ORDER:
-            opcode = OperationCode.BUY_STOP if side == Side.BUY else OperationCode.SELL_STOP
-
         else:
-            raise ValueError(
-                "invalid value %s for type '%s'"
-                % (order_type, type(OrderType))
-            )
+            opcode = OperationCode.BUY_STOP if side == Side.BUY else OperationCode.SELL_STOP
 
         request = requests.PlaceOrderRequest(
             symbol,
@@ -233,7 +231,24 @@ class MetaTrader4(Exchange):
             expiration
         )
 
-        response = responses.PlaceOrderResponse(self._send_request(request))
+        response_content = None
+
+        try:
+            response_content = self._send_request(request)
+        except MQL4Error as e:
+            if e.code == CommandResultCode.UNKNOWN_SYMBOL:
+                raise rmt.error.InvalidSymbol(symbol)
+
+            elif e.code == CommandResultCode.OFF_QUOTES:
+                raise rmt.error.OffQuotes(symbol, side, order_type)
+
+            elif e.code == CommandResultCode.REQUOTE:
+                raise rmt.error.Requote(symbol, price)
+
+            else:
+                raise e
+
+        response = responses.PlaceOrderResponse(response_content)
 
         order_info = response.order_info()
 
@@ -296,6 +311,10 @@ class MetaTrader4(Exchange):
                      price:       Optional[float]    = None,
                      expiration:  Optional[datetime] = None
     ):
+        # Ensure at least one parameter is not None.
+        if all(value is None for value in [stop_loss, take_profit, price, expiration]):
+            return
+
         request = requests.ModifyOrderRequest(
             ticket,
             stop_loss,
@@ -304,23 +323,45 @@ class MetaTrader4(Exchange):
             expiration
         )
 
-        self._send_request(request)
-
-        # order._stop_loss   = float(stop_loss)
-        # order._take_profit = float(take_profit)
-
-        # if price is not None:
-        #     order._open_price = float(price)
-
-        # if expiration is not None:
-        #     order._expiration = expiration
-
-    def cancel_order(self, ticket: int):
-        request = requests.CancelOrderRequest(ticket)
-        self._send_request(request)
+        try:
+            self._send_request(request)
+        except MQL4Error as e:
+            if e.code == CommandResultCode.INVALID_TICKET:
+                raise rmt.error.InvalidTicket(ticket)
+            else:
+                raise e
 
         try:
             order = self._orders[ticket]
+            
+            if stop_loss is not None:
+                order._stop_loss = float(stop_loss)
+
+            if take_profit is not None:
+                order._take_profit = float(take_profit)
+
+            if price is not None:
+                order._open_price = float(price)
+
+            if expiration is not None:
+                order._expiration = expiration
+
+        except KeyError:
+            pass
+
+    def cancel_order(self, ticket: int):
+        request = requests.CancelOrderRequest(ticket)
+
+        try:
+            self._send_request(request)
+        except MQL4Error as e:
+            if e.code == CommandResultCode.INVALID_TICKET:
+                raise rmt.error.InvalidTicket(ticket)
+            else:
+                raise e
+
+        try:
+            order         = self._orders[ticket]
             order._status = OrderStatus.CANCELED
         except KeyError:
             pass
@@ -331,8 +372,18 @@ class MetaTrader4(Exchange):
                     slippage: int             = 0,
                     lots:     Optional[float] = None
     ) -> int:
-        request  = requests.CloseOrderRequest(ticket, price, slippage, lots)
-        response = responses.CloseOrderResponse(self._send_request(request))
+        request = requests.CloseOrderRequest(ticket, price, slippage, lots)
+        response_content = None
+
+        try:
+            response_content = self._send_request(request)
+        except MQL4Error as e:
+            if e.code == CommandResultCode.INVALID_TICKET:
+                raise rmt.error.InvalidTicket(ticket)
+            else:
+                raise e
+
+        response = responses.CloseOrderResponse(response_content)
 
         if ticket in self._orders:
             order = self._orders[ticket]
@@ -375,8 +426,18 @@ class MetaTrader4(Exchange):
 
     def get_order(self, ticket: int) -> Order:
         if ticket not in self._orders:
-            request  = requests.GetOrderRequest(ticket)
-            response = responses.GetOrderResponse(self._send_request(request))
+            request = requests.GetOrderRequest(ticket)
+            response_content = None
+
+            try:
+                response_content = self._send_request(request)
+            except MQL4Error as e:
+                if e.code == CommandResultCode.INVALID_TICKET:
+                    raise rmt.error.InvalidTicket(ticket)
+                else:
+                    raise e
+
+            response = responses.GetOrderResponse(response_content)
 
             self._orders[ticket] = response.order()
 
@@ -432,16 +493,16 @@ class MetaTrader4(Exchange):
         cmd = request.command
 
         if cmd == '':
-            raise error.RequestError("empty attribute 'command' of request object %s" % type(request))
+            raise rmt.error.RequestError("empty attribute 'command' of request object %s" % type(request))
         
         if not cmd.isalpha():
-            raise error.RequestError("expected alphabetic command string (got: '%s')" % request.command)
+            raise rmt.error.RequestError("expected alphabetic command string (got: '%s')" % request.command)
 
         try:
             content      = json.dumps(request.content())
             request: str = '%s %s' % (cmd, content)            
-        except (error.NotImplementedException, ValueError) as e:
-            raise error.RequestError('failed to serialize JSON request: %s' % e)
+        except (rmt.error.NotImplementedException, ValueError) as e:
+            raise rmt.error.RequestError('failed to serialize JSON request: %s' % e)
 
         response: str = ''
 
@@ -454,7 +515,7 @@ class MetaTrader4(Exchange):
 
         except zmq.error.Again:
             sleep(0.000000001)
-            raise error.RequestTimeout()
+            raise rmt.error.RequestTimeout()
 
         cmd_result = None
         content    = None
@@ -462,7 +523,7 @@ class MetaTrader4(Exchange):
         try:
             cmd_result, content = self._parse_response(response)
         except ValueError as e:
-            raise error.RequestError('parsing of response message failed: %s' % e)
+            raise rmt.error.RequestError('parsing of response message failed: %s' % e)
 
         if content is None:
             content = {}

@@ -1,32 +1,50 @@
-from typing import Callable, Dict, NoReturn
-from rmt    import error, jsonutil
-from .      import CommandResultCode, Content
+from typing    import Callable, Dict, NoReturn, Optional
+from rmt       import jsonutil, OrderStatus
+from rmt.error import RequestError, ExecutionError, InvalidOrderStatus
+from .         import CommandResultCode, Content
+
+class MQL4Error(ExecutionError):
+    """Raised if an MQL4 error occurs."""
+
+    def __init__(self, command: str, code: CommandResultCode):
+        error_msg = (
+            "execution of command '{0}' failed with code {1} ({2})" 
+            .format(command, code.value, code.name)
+        )
+
+        super().__init__(error_msg)
+
+        self._code = code
+
+    @property
+    def code(self) -> Optional[int]:
+        return self._code
 
 def _raise_invalid_request(command: str, content: Dict) -> NoReturn:
-    raise error.RequestError("Invalid request (command was '%s')" % command)
+    raise RequestError("Invalid request (command was '%s')" % command)
 
 def _raise_unknown_request_command(command: str, content: Dict) -> NoReturn:
-    raise error.RequestError("Server does not recognize command '%s'" % command)
+    raise RequestError("Server does not recognize command '%s'" % command)
 
 def _raise_invalid_json(command: str, content: Dict) -> NoReturn:
-    raise error.RequestError("Request content at command '%s' is not valid JSON" % command)
+    raise RequestError("Request content at command '%s' is not valid JSON" % command)
 
 def _raise_missing_json_key(command: str, content: Dict) -> NoReturn:
     key = jsonutil.read_optional(content, 'key', str, '?')
 
-    raise error.RequestError("Missing JSON key '%s' at command '%s'" % (key, command))
+    raise RequestError("Missing JSON key '%s' at command '%s'" % (key, command))
 
 def _raise_missing_json_index(command: str, content: Dict) -> NoReturn:
     index = jsonutil.read_optional(content, 'index', int, '?')
 
-    raise error.RequestError("Missing JSON index %s at command '%s'" % (index, command))
+    raise RequestError("Missing JSON index %s at command '%s'" % (index, command))
 
 def _raise_invalid_json_key_type(command: str, content: Dict) -> NoReturn:
     key           = jsonutil.read_optional(content, 'key',      str, '?')
     actual_type   = jsonutil.read_optional(content, 'actual',   str, '?')
     expected_type = jsonutil.read_optional(content, 'expected', str, '?')
 
-    raise error.RequestError(
+    raise RequestError(
         "JSON key '%s' at command '%s' has invalid type (expected: %s, got: %s)"
         % (key, command, expected_type, actual_type)
     )
@@ -36,19 +54,21 @@ def _raise_invalid_json_index_type(command: str, content: Dict) -> NoReturn:
     actual_type   = jsonutil.read_optional(content, 'actual',   str, '?')
     expected_type = jsonutil.read_optional(content, 'expected', str, '?')
 
-    raise error.RequestError(
+    raise RequestError(
         "JSON index %s at command '%s' has invalid type (expected: %s, got: %s)"
-        (index, command, expected_type, actual_type)
+        % (index, command, expected_type, actual_type)
     )
 
 def _raise_invalid_order_status(command: str, content: Dict) -> NoReturn:
-    actual_status   = jsonutil.read_optional(content, 'actual',   str, '?')
-    expected_status = jsonutil.read_optional(content, 'expected', str, '?')
+    actual_status   = jsonutil.read_optional(content, 'actual', str)
+    #expected_status = jsonutil.read_optional(content, 'expected', str, '?')
 
-    raise error.RequestError(
-        "Cannot execute command '%s' with the order's status (expected: %s, got %s)"
-        % (command, expected_status, actual_status)
-    )
+    valid_statuses = [s.name.lower().replace('_', ' ') for s in OrderStatus]
+
+    if actual_status not in valid_statuses:
+        actual_status = '?'
+
+    raise InvalidOrderStatus(actual_status)
 
 RaiseFunction = Callable[[str, Dict], NoReturn]
 
@@ -67,13 +87,10 @@ def raise_error(command: str, result_code: CommandResultCode, content: Content) 
     is_valid_result_code = any(v == result_code for v in CommandResultCode)  
 
     if not is_valid_result_code:
-        raise error.RequestError("request failed by unknown error %s" % result_code)
+        raise RequestError("request failed by unknown error %s" % result_code)
 
     if result_code in _raise_function_table:
         raise_function = _raise_function_table[result_code]
         raise_function(command, content)
     else:
-        raise error.ExecutionError(
-            "execution of command '%s' failed with code %s (%s)"
-            % (command, result_code.value, result_code.name)
-        )
+        raise MQL4Error(command, result_code)

@@ -100,6 +100,24 @@ class Exchange(QObject):
         return error.NotImplementedException(self.__class__, 'get_tick')
 
     def get_instrument(self, symbol: str) -> Instrument:
+        """Retrieves information about an instrument.
+
+        Parameters
+        ----------
+        symbol : str
+            Instrument symbol.
+
+        Raises
+        ------
+        InvalidSymbol
+            If symbol does not identify an instrument on the exchange.
+        
+        Returns
+        -------
+        Instrument
+            object storing information about the instrument.
+        """
+
         raise error.NotImplementedException(self.__class__, 'get_instrument')
 
     def get_bar(self,
@@ -148,8 +166,8 @@ class Exchange(QObject):
 
         Raises
         ------
-        UnknownSymbol
-            If symbol is not recognized by the exchange.
+        InvalidSymbol
+            If symbol does not identify an instrument on the exchange.
         """
 
         raise error.NotImplementedException(self.__class__, 'subscribe')
@@ -173,8 +191,8 @@ class Exchange(QObject):
         RequestError
             If request could not be delivered to, or understood by the exchange.
 
-        UnknownSymbol
-            If symbol is not recognized by the exchange.
+        InvalidSymbol
+            If symbol does not identify an instrument on the exchange.
         """
 
         raise error.NotImplementedException(self.__class__, 'unsubscribe')
@@ -208,7 +226,7 @@ class Exchange(QObject):
                     magic_number: int = 0,
                     expiration:   Optional[datetime] = None
     ) -> int:
-        """Places an order to buy or sell an instrument.
+        """Places an order to buy or sell a contract of an instrument.
 
         Description
         -----------
@@ -282,7 +300,13 @@ class Exchange(QObject):
         Raises
         ------
         ValueError
-            If an invalid parameter value is provided.
+            If a parameter has an invalid value.
+
+        OffQuotes
+            If price is off a limit set by the exchange.
+
+        Requote
+            If order is a market order and the given price is outdated.
 
         RequestError
             If an error occurred before execution of the order.
@@ -293,7 +317,7 @@ class Exchange(QObject):
         Returns
         -------
         int
-            Ticket that identifies the placed order.
+            Ticket that identifies the order placed.
         """
 
         raise error.NotImplementedException(self.__class__, 'place_order')
@@ -305,15 +329,27 @@ class Exchange(QObject):
                      price:       Optional[float]    = None,
                      expiration:  Optional[datetime] = None
     ):
-        """Modifies an order.
+        """Modifies a pending or filled order.
 
         Description
         -----------
+        This method allows changing the Take Profit and Stop Loss levels of a pending
+        or filled order identified by `ticket`.
+
+        If that order is pending, this method also allows modification of its open price
+        and expiration time, both of which are ignored if that order's status is filled.
+        
+        If `ticket` does not identify an order, or if the order is neither pending nor
+        filled, or if modification fails for some reason, raises an error. Otherwise,
+        this method returns successfully if either an order has been modified or the
+        order's properties are left unchanged.
+
+        If all parameters are None, calling this method has no effect.
 
         Parameters
         ----------
         ticket : int
-            Ticket identifying an order.
+            Ticket that identifies a filled or pending order.
 
         stop_loss : float, optional
             New Stop Loss level. (default: current Stop Loss level)
@@ -329,19 +365,31 @@ class Exchange(QObject):
 
         Raises
         ------
-        OrderNotFound
+        RequestError
+            If an error occurs while communicating with the exchange.
+
+        RequestTimeout
+            If exchange takes too long to reply to the request.
+
+        InvalidTicket
             If `ticket` does not identify an order.
 
         InvalidOrderStatus
-            If ...
+            If order is not pending or filled.
+
+        ExecutionError
+            If an error occurs while attempting to modify the order.
         """
 
         raise error.NotImplementedException(self.__class__, 'modify_order')
 
     def cancel_order(self, ticket: int):
         """Cancels a pending order.
+
+        Description
+        -----------
         
-        If `ticket` identifies a order whose status is pending, cancels that order and
+        If `ticket` identifies an order whose status is pending, cancels that order and
         returns. Otherwise, if the order is not pending or if cancelation of that order
         fails for some reason, raises an error.
 
@@ -352,7 +400,7 @@ class Exchange(QObject):
         
         Raises
         ------
-        OrderNotFound
+        InvalidTicket
             If `ticket` does not identify an order.
 
         InvalidOrderStatus
@@ -380,7 +428,7 @@ class Exchange(QObject):
         This method requests the exchange server to close the order identified by
         `ticket`.
 
-        If `ticket` does not identify an order, raises `OrderNotFound`.
+        If `ticket` does not identify an order, raises `InvalidTicket`.
 
         Otherwise, if an order is found and the status of that order is final, namely
         the order is either closed, canceled, or expired, returns `ticket`.
@@ -412,10 +460,8 @@ class Exchange(QObject):
 
         Raises
         ------
-        OrderNotFound
+        InvalidTicket
             If `ticket` does not identify an order.
-
-        
 
         Requote
             ...
@@ -449,7 +495,7 @@ class Exchange(QObject):
         
         Raises
         ------
-        OrderNotFound
+        InvalidTicket
             If `ticket` does not identify an order.
 
         ExecutionError
