@@ -1,4 +1,4 @@
-#property version "0.2.0"
+#property version "0.2.1"
 #property strict
 
 #include "../Include/RMT/Command/RequestProcessor.mqh"
@@ -21,6 +21,7 @@ static input int    START_SECOND      = 0;     // Second to start processing OnT
 static input int    STOP_HOUR         = 23;    // Hour to stop processing OnTick() on Strategy Tester.
 static input int    STOP_MINUTE       = 59;    // Minute to stop processing OnTick() on Strategy Tester.
 static input int    STOP_SECOND       = 59;    // Second to stop processing OnTick() on Strategy Tester.
+static input bool   REMOVE_AFTER_STOP = false; // Whether the Expert should be removed after stop time is reached.
 
 //==============================================================================
 // Global variables.
@@ -99,7 +100,9 @@ void on_tester_tick()
     
     if (current_time >= testing_stop_time)
     {
-        ExpertRemove();
+        if (REMOVE_AFTER_STOP)
+            ExpertRemove();
+
         return;
     }
 
