@@ -18,6 +18,7 @@ private:
 
     CommandResult execute(const WatchSymbolRequest& request) override;
     CommandResult execute(const ModifyOrderRequest& request) override;
+    CommandResult execute(const CancelOrderRequest& request) override;
 
     CommandResult execute(const GetTickRequest&        request, GetTickResponse&        response) override;
     CommandResult execute(const GetInstrumentRequest&  request, GetInstrumentResponse&  response) override;
@@ -528,4 +529,14 @@ CommandResult CommandExecutor::execute(const ModifyOrderRequest& request) overri
     }
 
     return CommandResult::SUCCESS;
+}
+
+CommandResult CommandExecutor::execute(const CancelOrderRequest& request) override
+{
+    ResetLastError();
+
+    // `ignored` is to prevent a compile warning message, "return value should be checked."
+    const bool ignored = OrderDelete(request.ticket);
+
+    return GetLastError();
 }

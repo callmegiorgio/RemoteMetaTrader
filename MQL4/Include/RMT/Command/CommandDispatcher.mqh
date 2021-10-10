@@ -74,6 +74,7 @@ protected:
     //==============================================================================
     virtual CommandResult execute(const WatchSymbolRequest& request) = 0;
     virtual CommandResult execute(const ModifyOrderRequest& request) = 0;
+    virtual CommandResult execute(const CancelOrderRequest& request) = 0;
 
     //==============================================================================
     // Request-and-response commands.
@@ -85,7 +86,6 @@ protected:
     virtual CommandResult execute(const GetOrderRequest&       request, GetOrderResponse&       response) = 0;
     virtual CommandResult execute(const PlaceOrderRequest&     request, PlaceOrderResponse&     response) = 0;
     virtual CommandResult execute(const CloseOrderRequest&     request, CloseOrderResponse&     response) = 0;
-    
 
 private:
     typedef CommandResult(*ExecuteFunctionPointer)(CommandDispatcher&, CommandArguments&);
@@ -175,6 +175,7 @@ CommandDispatcher::CommandDispatcher()
 
     register_request_only_command<WatchSymbolRequest>("watchSymbol");
     register_request_only_command<ModifyOrderRequest>("modifyOrder");
+    register_request_only_command<CancelOrderRequest>("cancelOrder");
 
     register_request_response_command<GetTickRequest,        GetTickResponse       >("getTick");
     register_request_response_command<GetInstrumentRequest,  GetInstrumentResponse >("getInstrument");

@@ -9,3 +9,4 @@ from .watch_symbol     import WatchSymbolRequest
 from .place_order      import PlaceOrderRequest
 from .close_order      import CloseOrderRequest
 from .modify_order     import ModifyOrderRequest
+from .cancel_order     import CancelOrderRequest

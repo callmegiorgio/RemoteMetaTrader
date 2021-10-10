@@ -314,6 +314,16 @@ class MetaTrader4(Exchange):
         # if expiration is not None:
         #     order._expiration = expiration
 
+    def cancel_order(self, ticket: int):
+        request = requests.CancelOrderRequest(ticket)
+        self._send_request(request)
+
+        try:
+            order = self._orders[ticket]
+            order._status = OrderStatus.CANCELED
+        except KeyError:
+            pass
+
     def close_order(self,
                     ticket:   int,
                     price:    Optional[float] = None,

@@ -1,6 +1,7 @@
 #property strict
 
 // Local
+#include "CancelOrderRequest.mqh"
 #include "CloseOrderRequest.mqh"
 #include "GetCurrentBarRequest.mqh"
 #include "GetHistoryBarsRequest.mqh"

@@ -7,7 +7,7 @@
 /// {
 ///   "ticket": integer
 /// }
-class GetOrderRequest {
+class CancelOrderRequest {
 public:
     bool deserialize(JsonReader& reader)
     {

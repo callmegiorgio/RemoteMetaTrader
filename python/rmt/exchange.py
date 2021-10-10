@@ -330,6 +330,35 @@ class Exchange(QObject):
 
         raise error.NotImplementedException(self.__class__, 'modify_order')
 
+    def cancel_order(self, ticket: int):
+        """Cancels a pending order.
+        
+        If `ticket` identifies a order whose status is pending, cancels that order and
+        returns. Otherwise, if the order is not pending or if cancelation of that order
+        fails for some reason, raises an error.
+
+        Parameters
+        ----------
+        ticket : int
+            Ticket that identifies a pending order.
+        
+        Raises
+        ------
+        OrderNotFound
+            If `ticket` does not identify an order.
+
+        InvalidOrderStatus
+            If the order identified by `ticket` is not pending.
+
+        ExecutionError
+            If an error occurs while attempting to cancel the order.
+
+        RequestError
+            If an error occurs while communicating with the exchange.
+        """
+
+        raise error.NotImplementedException(self.__class__, 'cancel_order')
+
     def close_order(self,
                     ticket:   int,
                     price:    Optional[float] = None,
