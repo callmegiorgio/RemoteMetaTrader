@@ -11,7 +11,7 @@
 class Server {
 public:
     /// Time in milliseconds to wait for a request while on Strategy Tester.
-    static const uint TESTER_RECV_TIMEOUT;
+    static const uint RECV_WAIT_TIMEOUT;
 
     Server(string shared_name = "__RMT_Exp3rt_;D__");
 
@@ -26,19 +26,18 @@ public:
     ///
     /// If a request that was sent by a client is pending on the REP socket's queue,
     /// pops that request from the queue into `request` and returns `true`.
-    /// Otherwise, if either no request is pending on the queue or an error occurs,
-    /// returns `false`.
     ///
-    /// If the Expert is being run by Strategy Tester, calling this method blocks
-    /// until a request is received or until `TESTER_RECV_TIMEOUT` milliseconds have
-    /// elapsed. Otherwise, if this method is not run by Strategy Tester, returns
-    /// immediately if no request is pending.
+    /// Otherwise, if `should_wait` is `true`, waits until a request is received or
+    /// until `RECV_WAIT_TIMEOUT` milliseconds have elapsed. If timeout is reached,
+    /// or if `should_wait` is `false`, returns `false`. Otherwise, writes the
+    /// received request into `request` and returns `true`.
     ///
     /// @param request Destination where the received request is written to.
+    /// @param should_wait Whether to wait for a request to be received.
     /// @return `true` if a request was received, and `false` otherwise.
     ///
     ////////////////////////////////////////////////////////////////////////////////
-    bool recv_request(string& request);
+    bool recv_request(string& request, bool should_wait = false);
 
     bool send_response(string response);
 
@@ -62,7 +61,7 @@ private:
 //===========================================================================
 // --- Server implementation ---
 //===========================================================================
-static const uint Server::TESTER_RECV_TIMEOUT = 10;
+static const uint Server::RECV_WAIT_TIMEOUT = 10;
 
 int Server::last_error_number()
 {
@@ -117,7 +116,7 @@ bool Server::start_rep_socket(string addr)
         return false;
     }
 
-    if (IsTesting() && !m_rep_socket.set_recv_timeout(TESTER_RECV_TIMEOUT))
+    if (!m_rep_socket.set_recv_timeout(RECV_WAIT_TIMEOUT))
     {
         Print("Failed to set receive timeout on REP socket");
         return false;
@@ -167,9 +166,9 @@ void Server::stop_pub_socket()
         Print("Failed to unbind (PUB) socket: ", last_error_message());
 }
 
-bool Server::recv_request(string& request)
+bool Server::recv_request(string& request, bool should_wait)
 {
-    const int flags = IsTesting() ? 0 : ZMQ_DONTWAIT;
+    const int flags = should_wait ? 0 : ZMQ_DONTWAIT;
 
     if (m_rep_socket.recv(request, flags))
         return true;

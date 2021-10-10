@@ -32,11 +32,14 @@ void RequestProcessor::process_requests(uint timeout_ms)
 {
     const uint stop_tick_count = (timeout_ms != 0) ? (GetTickCount() + timeout_ms) : 0;
 
+    // Don't wait for a request if none is pending.
+    bool should_wait = false;
+
     while (true)
     {
         string request;
 
-        if (!server.recv_request(request))
+        if (!server.recv_request(request, should_wait))
             break;
 
         Print("received request: ", request);
@@ -49,6 +52,11 @@ void RequestProcessor::process_requests(uint timeout_ms)
 
         if (stop_tick_count != 0 && GetTickCount() >= stop_tick_count)
             break;
+
+        // We got a request and sent a reply, so wait for a while in the next attempt to
+        // receive a request in case a client intends to send more requests after it has
+        // processed the response we just sent it.
+        should_wait = true;
     }
 }
 
