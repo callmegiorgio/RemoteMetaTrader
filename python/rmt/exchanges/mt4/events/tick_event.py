@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 from rmt      import jsonutil, Tick
 from ..       import Content
+from .        import Event
 
-class TickEvent:
+class TickEvent(Event):
     def __init__(self, symbol: str, content: Content):
         if symbol == '':
             raise ValueError("tick event name is missing instrument symbol")

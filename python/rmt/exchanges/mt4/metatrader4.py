@@ -62,9 +62,8 @@ class MetaTrader4(Exchange):
 
         self._orders: Dict[int, Order] = {}
 
-        self._event_factory = {
-            'tick': (events.TickEvent, lambda e: self.tick_received.emit(e.symbol(), e.tick()))
-        }
+        self._event_dispatcher = events.Dispatcher()
+        self._event_dispatcher.register('tick', events.TickEvent, self._on_tick_event)
 
         self.connect(protocol, host, req_port, sub_port)
 
@@ -563,30 +562,7 @@ class MetaTrader4(Exchange):
         if not isinstance(content, (dict, list)):
             raise ValueError("content of event message '%s' is not valid JSON", event_name)
 
-        static_name = None
-        dynamic_name = None
-        dynamic_name_index = event_name.find('.')
+        self._event_dispatcher.dispatch(event_name, content)
 
-        if dynamic_name_index != -1:
-            static_name  = event_name[0:dynamic_name_index]
-            dynamic_name = event_name[(dynamic_name_index + 1):]
-        else:
-            static_name = event_name
-
-        if not static_name.isalpha():
-            raise ValueError("expected alphabetic static part of event name (got: '%s')" % static_name)
-
-        if static_name not in self._event_factory:
-            raise ValueError("received event message with unknown name '%s'" % static_name)
-
-        event_data    = self._event_factory[static_name]
-        EventType     = event_data[0]
-        event_emitter = event_data[1]
-        event_obj     = None
-
-        if dynamic_name is not None:
-            event_obj = EventType(dynamic_name, content)
-        else:
-            event_obj = EventType(static_name, content)
-
-        event_emitter(event_obj)
+    def _on_tick_event(self, event: events.TickEvent):
+        self.tick_received.emit(event.symbol(), event.tick())
