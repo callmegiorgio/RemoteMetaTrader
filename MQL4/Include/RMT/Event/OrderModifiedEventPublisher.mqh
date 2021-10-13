@@ -38,7 +38,7 @@ public:
         msg["tp"]         = event.order.take_profit;
         msg["expiration"] = event.order.expiration;
 
-        m_server.publish("orderModified" + " " + msg.serialize());
+        m_server.publish("orderModified", msg.serialize());
     }
 
 private:

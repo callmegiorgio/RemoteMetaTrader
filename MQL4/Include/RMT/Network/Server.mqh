@@ -10,7 +10,7 @@
 /// TODO
 class Server {
 public:
-    /// Time in milliseconds to wait for a request while on Strategy Tester.
+    /// Time in milliseconds to wait for a request.
     static const uint RECV_WAIT_TIMEOUT;
 
     Server(string shared_name = "__RMT_Exp3rt_;D__");
@@ -41,7 +41,7 @@ public:
 
     bool send_response(string response);
 
-    bool publish(string event);
+    bool publish(string name, string content);
 
 private:
     static int last_error_number();
@@ -190,9 +190,9 @@ bool Server::send_response(string response)
     return true;
 }
 
-bool Server::publish(string event)
+bool Server::publish(string name, string content)
 {
-    if (m_pub_socket.send(event, ZMQ_DONTWAIT))
+    if (m_pub_socket.send(name + " " + content, ZMQ_DONTWAIT))
         return true;
 
     if (last_error_number() != EAGAIN)

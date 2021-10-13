@@ -38,7 +38,7 @@ public:
         msg[1] = event.tick.bid();
         msg[2] = event.tick.ask();
 
-        m_server.publish("tick." + event.symbol + " " + msg.serialize());
+        m_server.publish("tick." + event.symbol, msg.serialize());
     }
 
 private:

@@ -56,7 +56,7 @@ public:
         msg["profit"]     = event.order.profit;
         msg["swap"]       = event.order.swap;
 
-        m_server.publish("orderPlaced" + " " + msg.serialize());
+        m_server.publish("orderPlaced", msg.serialize());
     }
 
 private:
