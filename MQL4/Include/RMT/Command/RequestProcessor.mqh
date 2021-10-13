@@ -6,7 +6,7 @@
 
 class RequestProcessor {
 public:
-    RequestProcessor(Server& the_server, TickEventPublisher& tick_publisher);
+    RequestProcessor(Server& the_server, TickEventSubject& tick_event_subject);
     
     /// Processes requests pending on the REQ socket until no request is
     /// pending or `timeout_ms` is reached. If `timeout_ms` is 0, then
@@ -23,9 +23,9 @@ private:
 //===========================================================================
 // --- RequestProcessor implementation ---
 //===========================================================================
-RequestProcessor::RequestProcessor(Server& the_server, TickEventPublisher& tick_publisher)
+RequestProcessor::RequestProcessor(Server& the_server, TickEventSubject& tick_event_subject)
     : m_server(GetPointer(the_server))
-    , m_cmd_executor(tick_publisher)
+    , m_cmd_executor(tick_event_subject)
 {}
 
 void RequestProcessor::process_requests(uint timeout_ms)

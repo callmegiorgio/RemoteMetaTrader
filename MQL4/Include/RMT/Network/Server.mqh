@@ -41,7 +41,7 @@ public:
 
     bool send_response(string response);
 
-    bool publish_event(string event);
+    bool publish(string event);
 
 private:
     static int last_error_number();
@@ -190,7 +190,7 @@ bool Server::send_response(string response)
     return true;
 }
 
-bool Server::publish_event(string event)
+bool Server::publish(string event)
 {
     if (m_pub_socket.send(event, ZMQ_DONTWAIT))
         return true;

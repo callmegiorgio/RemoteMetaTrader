@@ -6,103 +6,41 @@
 // Local
 #include "../Network/Server.mqh"
 #include "../Trading/Tick.mqh"
-#include "EventPublisher.mqh"
+#include "../Utility/JsonValue.mqh"
+#include "../Utility/Observer.mqh"
 #include "TickEvent.mqh"
 
-/// Stores symbols which a client is subscribed to.
-class TickEventPublisher : private EventPublisher {
+////////////////////////////////////////////////////////////////////////////////
+/// Publishes `TickEvent` messages of the following layout:
+///
+/// Event static name: "tick"
+/// Event dynamic name: instrument symbol
+/// Event content:
+/// [
+///    datetime,
+///    double,
+///    double
+/// ]
+///
+////////////////////////////////////////////////////////////////////////////////
+class TickEventPublisher : public Observer<TickEvent> {
 public:
-    TickEventPublisher(Server& the_server);
-    ~TickEventPublisher();
-
-    void insert(string symbol);
-    void remove(string symbol);
-
-    void fill();
-    void clear();
+    TickEventPublisher(Server& the_server)
+    {
+        m_server = GetPointer(the_server);
+    }
     
-    int size() const;
-    bool contains(string symbol) const;
+    void on_notify(const TickEvent& event) override
+    {
+        JsonValue msg;
 
-    void process_events() override;
+        msg[0] = event.tick.server_time();
+        msg[1] = event.tick.bid();
+        msg[2] = event.tick.ask();
+
+        m_server.publish("tick." + event.symbol + " " + msg.serialize());
+    }
 
 private:
-    HashMap<string, Tick*> m_ticks;
+    Server* m_server;
 };
-
-//===========================================================================
-// --- TickEventPublisher implementation ---
-//===========================================================================
-TickEventPublisher::TickEventPublisher(Server& the_server)
-    : EventPublisher(the_server)
-{}
-
-TickEventPublisher::~TickEventPublisher()
-{
-    clear();
-}
-
-void TickEventPublisher::insert(string symbol)
-{
-    Tick* tick = m_ticks.get(symbol, NULL);
-
-    if (tick == NULL)
-        m_ticks.set(symbol, new Tick);
-}
-
-void TickEventPublisher::remove(string symbol)
-{
-    Tick* tick = m_ticks.get(symbol, NULL);
-
-    if (tick != NULL)
-    {
-        delete tick;
-        m_ticks.remove(symbol);
-    }
-}
-
-void TickEventPublisher::fill()
-{
-    const int n = SymbolsTotal(false);
-                
-    for (int i = 0; i < n; i++)
-        insert(SymbolName(i, false));
-}
-
-void TickEventPublisher::clear()
-{
-    foreachm(string, symbol, Tick*, tick, m_ticks)
-        delete tick;
-}
-
-int TickEventPublisher::size() const
-{
-    return m_ticks.size();
-}
-
-bool TickEventPublisher::contains(string symbol) const
-{
-    return m_ticks.contains(symbol);
-}
-
-void TickEventPublisher::process_events()
-{
-    Tick last_tick;
-    
-    foreachm(string, symbol, Tick*, tick, m_ticks)
-    {
-        if (!Tick::current(symbol, last_tick))
-            continue;
-
-        if (tick.bid() == last_tick.bid() && tick.ask() == last_tick.ask())
-            continue;
-        
-        TickEvent ev;
-        ev.symbol = symbol;
-        ev.tick   = last_tick;
-
-        publish(ev);
-
-        tick = last_tick;
-    }
-}

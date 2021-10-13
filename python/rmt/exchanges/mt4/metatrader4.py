@@ -53,6 +53,11 @@ class MetaTrader4(Exchange):
         self._req_socket.setsockopt(zmq.SNDTIMEO, 30000)
         self._req_socket.setsockopt(zmq.RCVTIMEO, 10000)
 
+        self._sub_socket.subscribe('orderPlaced')
+        self._sub_socket.subscribe('orderFinished')
+        self._sub_socket.subscribe('orderModified')
+        self._sub_socket.subscribe('orderUpdated')
+
         self._subscribed_symbols: Set[str] = set()
         self._logger = logging.getLogger(MetaTrader4.__name__)
 
@@ -60,10 +65,23 @@ class MetaTrader4(Exchange):
 
         self._instruments: Dict[str, Instrument] = {}
 
-        self._orders: Dict[int, Order] = {}
+        self._orders: Dict[int, Optional[Order]] = {}
+        """Dictionary of tracked orders, mapped by ticket.
+        
+        No entry in the dictionary means an order is not tracked.
+
+        Values of None in the dictionary mean that an order is tracked for event
+        emitting purposes, but there's no order data other than its ticket.
+
+        Having an order object stored means we got order data from the server.
+        """
 
         self._event_dispatcher = events.Dispatcher()
-        self._event_dispatcher.register('tick', events.TickEvent, self._on_tick_event)
+        self._event_dispatcher.register('tick',          events.TickEvent,          self._on_tick_event)
+        self._event_dispatcher.register('orderPlaced',   events.OrderPlacedEvent,   self._on_order_placed_event)
+        self._event_dispatcher.register('orderFinished', events.OrderFinishedEvent, self._on_order_finished_event)
+        self._event_dispatcher.register('orderModified', events.OrderModifiedEvent, self._on_order_modified_event)
+        self._event_dispatcher.register('orderUpdated',  events.OrderUpdatedEvent,  self._on_order_updated_event)
 
         self.connect(protocol, host, req_port, sub_port)
 
@@ -81,7 +99,7 @@ class MetaTrader4(Exchange):
 
         sub_addr = addr_prefix % sub_port
         self._sub_socket.connect(sub_addr)
-        self._logger.info('Ready to receive quotes on (PULL) socket: %s', sub_addr)
+        self._logger.info('Ready to receive quotes on (SUB) socket: %s', sub_addr)
 
     def disconnect(self):
         self._req_socket.close()
@@ -250,6 +268,7 @@ class MetaTrader4(Exchange):
         response = responses.PlaceOrderResponse(response_content)
 
         order_info = response.order_info()
+        order = None
 
         ################################################################################
         # Add order to list of tracked orders if the response also contains information
@@ -299,9 +318,11 @@ class MetaTrader4(Exchange):
                 swap         = order_info.swap(),
             )
 
-            self._orders[response.ticket()] = order
+        ticket = response.ticket()
 
-        return response.ticket()
+        self._orders[ticket] = order
+
+        return ticket
 
     def modify_order(self,
                      ticket:      int,
@@ -332,6 +353,9 @@ class MetaTrader4(Exchange):
 
         try:
             order = self._orders[ticket]
+
+            if order is None:
+                return
             
             if stop_loss is not None:
                 order._stop_loss = float(stop_loss)
@@ -360,8 +384,11 @@ class MetaTrader4(Exchange):
                 raise e
 
         try:
-            order         = self._orders[ticket]
-            order._status = OrderStatus.CANCELED
+            order = self._orders[ticket]
+
+            if order is not None:
+                order._status = OrderStatus.CANCELED
+
         except KeyError:
             pass
 
@@ -384,17 +411,21 @@ class MetaTrader4(Exchange):
 
         response = responses.CloseOrderResponse(response_content)
 
-        if ticket in self._orders:
+        try:
             order = self._orders[ticket]
 
-            order._status      = OrderStatus.CLOSED
-            order._lots        = response.lots()
-            order._close_price = response.close_price()
-            order._close_time  = response.close_time()
-            order._comment     = response.comment()
-            order._commission  = response.commission()
-            order._profit      = response.profit()
-            order._swap        = response.swap()
+            if order is not None:
+                order._status      = OrderStatus.CLOSED
+                order._lots        = response.lots()
+                order._close_price = response.close_price()
+                order._close_time  = response.close_time()
+                order._comment     = response.comment()
+                order._commission  = response.commission()
+                order._profit      = response.profit()
+                order._swap        = response.swap()
+        
+        except KeyError:
+            pass
 
         new_order = response.new_order()
 
@@ -424,23 +455,31 @@ class MetaTrader4(Exchange):
         return ticket
 
     def get_order(self, ticket: int) -> Order:
-        if ticket not in self._orders:
-            request = requests.GetOrderRequest(ticket)
-            response_content = None
+        try:
+            order = self._orders[ticket]
 
-            try:
-                response_content = self._send_request(request)
-            except MQL4Error as e:
-                if e.code == CommandResultCode.INVALID_TICKET:
-                    raise rmt.error.InvalidTicket(ticket)
-                else:
-                    raise e
+            if order is not None:
+                return order
 
-            response = responses.GetOrderResponse(response_content)
+        except KeyError:
+            pass
 
-            self._orders[ticket] = response.order()
+        request = requests.GetOrderRequest(ticket)
+        response_content = None
 
-        return self._orders[ticket]
+        try:
+            response_content = self._send_request(request)
+        except MQL4Error as e:
+            if e.code == CommandResultCode.INVALID_TICKET:
+                raise rmt.error.InvalidTicket(ticket)
+            else:
+                raise e
+
+        response = responses.GetOrderResponse(response_content)
+
+        self._orders[ticket] = response.order()
+
+        return response.order()
 
     def process_events(self):
         while True:
@@ -566,3 +605,101 @@ class MetaTrader4(Exchange):
 
     def _on_tick_event(self, event: events.TickEvent):
         self.tick_received.emit(event.symbol(), event.tick())
+
+    def _on_order_placed_event(self, event: events.OrderPlacedEvent):
+        ticket      = event.ticket()
+        event_order = event.order()
+
+        tracked_order = None
+
+        try:
+            tracked_order = self._orders[ticket]
+        except KeyError:
+            pass
+
+        if tracked_order is None:
+            self._orders[ticket] = event_order
+        else:
+            tracked_order._side         = event_order.side()
+            tracked_order._type         = event_order.type()
+            tracked_order._lots         = event_order.lots()
+            tracked_order._status       = event_order.status()
+            tracked_order._open_price   = event_order.open_price()
+            tracked_order._open_time    = event_order.open_time()
+            tracked_order._stop_loss    = event_order.stop_loss()
+            tracked_order._take_profit  = event_order.take_profit()
+            tracked_order._expiration   = event_order.expiration()
+            tracked_order._magic_number = event_order.magic_number()
+            tracked_order._comment      = event_order.comment()
+            tracked_order._commission   = event_order.commission()
+            tracked_order._profit       = event_order.profit()
+            tracked_order._swap         = event_order.swap()
+        
+        if event_order.status() == OrderStatus.PENDING:
+            self.order_opened.emit(ticket)
+        else:
+            self.order_filled.emit(ticket)
+    
+    def _on_order_finished_event(self, event: events.OrderFinishedEvent):
+        ticket = event.ticket()
+        order = None
+
+        try:
+            order = self._orders[ticket]
+        except KeyError:
+            return
+
+        if order is not None:
+            order._status      = event.status()
+            order._close_price = event.close_price()
+            order._close_time  = event.close_time()
+            order._stop_loss   = event.stop_loss()
+            order._take_profit = event.take_profit()
+            order._expiration  = event.expiration()
+            order._comment     = event.comment()
+            order._commission  = event.commission()
+            order._profit      = event.profit()
+            order._swap        = event.swap()
+
+        if event.status() == OrderStatus.CLOSED:
+            self.order_closed.emit(ticket)
+
+        elif event.status() == OrderStatus.CANCELED:
+            self.order_canceled.emit(ticket)
+
+        else:
+            self.order_expired.emit(ticket)
+
+    def _on_order_modified_event(self, event: events.OrderModifiedEvent):
+        ticket = event.ticket()
+        order = None
+
+        try:
+            order = self._orders[ticket]
+        except KeyError:
+            return
+
+        if order is not None:
+            order._open_price  = event.open_price()
+            order._stop_loss   = event.stop_loss()
+            order._take_profit = event.take_profit()
+            order._expiration  = event.expiration()
+
+        self.order_modified.emit(ticket)
+
+    def _on_order_updated_event(self, event: events.OrderUpdatedEvent):
+        ticket = event.ticket()
+        order = None
+
+        try:
+            order = self._orders[ticket]
+        except KeyError:
+            return
+
+        if order is not None:
+            order._comment    = event.comment()
+            order._commission = event.commission()
+            order._profit     = event.profit()
+            order._swap       = event.swap()
+
+        self.order_updated.emit(ticket)

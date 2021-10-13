@@ -10,79 +10,121 @@ class Exchange(QObject):
     tick_received = pyqtSignal(str, Tick)
     """Event emitted when a quote update of an instrument is received.
     
-    This event is emitted by `Exchange.refresh_rates()` when a new tick of
-    a subscribed instrument is received. The parameters passed in are the
-    instrument's symbol and its new tick.
+    This event is emitted by `process_events()` when a new tick of a subscribed
+    instrument is received. The parameters passed in are the instrument's symbol
+    and its new tick.
     
-    To access the current tick, irrespective of whether it's a new tick or
-    not, `Exchange.get_tick()` may be called.
+    To retrieve the current tick, irrespective of whether it's a new tick or not,
+    you may instead call `get_tick()`.
     """
 
-    order_placed = pyqtSignal(Order)
-    """Event emitted when a limit order or a stop order is placed.
+    order_opened = pyqtSignal(int)
+    """Event emitted when a limit order or a stop order is opened.
 
-    This event is emitted by the methods `Exchange.place_limit_order()` and
-    `Exchange.place_stop_order()` when a pending order is placed. The status
-    of that pending order is `OrderStatus.PENDING`.
+    This event is emitted by `process_events()` when an order is opened by the exchange
+    server. The order may be have been opened as a result of a call to `place_order()`
+    with `OrderType.LIMIT_ORDER` or `OrderType.STOP_ORDER` passed in as a value to the
+    parameter `order_type`, or by other means, such as a manual open on the exchange's
+    platform.
 
-    The parameter passed in is the same order object returned by any of the
-    aforementioned methods. You may identify whether the order is a limit order
-    or a stop order by calling `Order.type()`.
+    The parameter passed in is the open order's ticket, which may be used along with
+    `get_order()` to retrieve the associated order object.
+
+    The order notified by this event becomes tracked, meaning that further events on
+    that same order are also emitted.
     """
 
-    order_canceled = pyqtSignal(Order)
+    order_canceled = pyqtSignal(int)
     """Event emitted when a limit order or stop order is canceled.
 
-    This event is emitted by `Exchange.cancel_order()` when a pending order
-    is canceled. The status of that pending order is `OrderStatus.CANCELED`.
+    This event is emitted by `process_events()` when an order is canceled by the
+    exchange server. The order may have been canceled as a result of a call to
+    `cancel_order()` or for any other reason, such as a manual cancel on the
+    exchange's platform.
+    
+    The parameter passed in is the ticket of the canceled order. You may identify
+    whether that order is a limit order or a stop order by calling `Order.type()` on
+    the object returned by `get_order()`.
 
-    The parameter passed in is the same order object returned by the aforementioned
-    method. You may identify whether the order is a limit order or a stop order
-    by calling `Order.type()`.
+    Note that this event is only emitted for tracked orders. In particular, if neither
+    `order_opened` nor `order_filled` were previously emitted for an order, this event
+    is also not emitted for that order.
     """
 
-    order_expired = pyqtSignal(Order)
+    order_expired = pyqtSignal(int)
     """Event emitted when a limit order or stop order expires.
     
-    This event is emitted when the exchange automatically cancels a pending order
-    once its expiration time is reached. As such, this event is never emitted if
-    no expiration time is specified for the order. The status of the expired order
-    is `OrderStatus.EXPIRED`.
+    This event is emitted by `process_events()` when the exchange automatically
+    cancels a pending order due to its expiration time being reached. This may
+    only happen to a pending order that has an expiration time.
 
-    The expired order is passed in as a parameter. To identify whether the order is
-    a limit order or a stop order, call `Order.type()`.
+    The ticket of the expired order is passed in as a parameter.
+
+    Note that this event is only emitted for tracked orders. In particular, if the
+    event `order_opened` was not previously emitted for an order, this event is
+    also not emitted for that order.
     """
 
-    order_filled = pyqtSignal(Order)
+    order_filled = pyqtSignal(int)
     """Event emitted when an order is filled.
     
-    This event is emitted by `Exchange.place_market_order()` immediately before it
-    returns the filled order. In this case, the filled order's status is always
-    `OrderStatus.FILLED`.
-    
-    This event is also called if a pending order, that is, an order returned by a
-    call to `Exchange.place_stop_order()` or `Exchange.place_limit_order()`, is filled
-    because the market reached its price. In this case, the order may be partially filled,
-    in which case the order's status is `OrderStatus.PARTIALLY_FILLED`. Otherwise, the
-    order's status is `OrderStatus.FILLED`.
+    This event is emitted by `process_events()` if a pending order becomes filled or
+    a new market order is placed. This may happen as a result of `place_order()`
+    being previously called, or for another reason, such as a manual fill of a
+    market order on the exchange's platform.
 
-    The filled order is passed in as a parameter. To identify whether the order is a
-    marker order, a limit order, or a stop order, call `Order.type()`.
+    The ticket of the filled order is passed in as a parameter.
+
+    The order notified by this event becomes tracked, meaning that further events on
+    that same order are also emitted.
     """
 
-    order_closed = pyqtSignal(Order)
-    """Event emitted when a filled order is closed
+    order_closed = pyqtSignal(int)
+    """Event emitted when a filled order is closed.
     
-    This event is emitted by `Exchange.close_order()` immediately after it closes an
-    order, or if the exchange closed the order for any other reason, such as the market
-    reaching the order's Take Profit or Stop Loss prices or a forced sale occuring due to
-    failure to meet a margin call. In any case, the order's status is `OrderStatus.CLOSED`.
+    This event is emitted by `process_events()` if an order is closed by the exchange
+    server. This happens as a result of `close_order()` being called or another
+    reason, such as a manual close of an order on the exchange's platform, the market
+    reaching a previously set Take Profit or Stop Loss level, or a forced sale occuring
+    due to an account's failure to meet a margin call.
 
-    Note that only filled orders may be closed. In particular, canceled and expired orders
-    never become filled, and thus are never sent by this event.
+    The ticket of the closed order is passed in as a parameter.
 
-    The closed order is passed in as a parameter. To identify whether the order is a
-    marker order, a limit order, or a stop order, call `Order.type()`.
+    Note that this event is only emitted for tracked orders. In particular, if neither
+    `order_opened` nor `order_filled` were previously emitted for an order, this event
+    is also not emitted for that order.
+    """
+
+    order_modified = pyqtSignal(int)
+    """Event emitted when an order is modified.
+    
+    This event is emitted by `process_events()` if a user-modifiable property of an
+    order, namely a pending order's open price and expiration time, and an active
+    order's Stop Loss and Take Profit level, is changed. This happens if
+    `modify_order()` is called or a similar operation is manually performed on
+    the exchange's platform.
+
+    The parameter passed in is the ticket of the modified order.
+
+    Note that this event is only emitted for tracked orders. In particular, if neither
+    `order_opened` nor `order_filled` were previously emitted for an order, this event
+    is also not emitted for that order.
+    """
+
+    order_updated = pyqtSignal(int)
+    """Event emitted when a dynamic property of an order is changed.
+    
+    This event is emitted by `process_events()` if any of the dynamic properties of
+    an order, namely an order's comment, commission, profit, and swap, is changed.
+    Since these are properties which a trader has no control over, no method call
+    of this class will cause this event to be emitted, only changes in the market
+    itself will do it.
+
+    The ticket of the updated order is passed in as a parameter.
+
+    Note that this event is only emitted for tracked orders. In particular, if neither
+    `order_opened` nor `order_filled` were previously emitted for an order, this event
+    is also not emitted for that order.
     """
 
     def __init__(self):

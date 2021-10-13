@@ -4,14 +4,14 @@
 #include <Mql/Collection/HashSet.mqh>
 
 // Local
-#include "../Event/TickEventPublisher.mqh"
+#include "../Event/TickEventSubject.mqh"
 #include "../Trading/Tick.mqh"
 #include "CommandDispatcher.mqh"
 
 /// Implements the business logic interfaced by `CommandDispatcher`.
 class CommandExecutor : public CommandDispatcher {
 public:
-    CommandExecutor(TickEventPublisher& tick_publisher);
+    CommandExecutor(TickEventSubject& tick_event_subject);
 
 private:
     CommandResult execute(GetAccountResponse& response) override;
@@ -28,15 +28,15 @@ private:
     CommandResult execute(const PlaceOrderRequest&     request, PlaceOrderResponse&     response) override;
     CommandResult execute(const CloseOrderRequest&     request, CloseOrderResponse&     response) override;
 
-    TickEventPublisher* m_tick_publisher;
+    TickEventSubject* m_tick_ev_sub;
 };
 
 //===========================================================================
 // --- CommandExecutor implementation ---
 //===========================================================================
-CommandExecutor::CommandExecutor(TickEventPublisher& tick_publisher)
+CommandExecutor::CommandExecutor(TickEventSubject& tick_event_subject)
 {
-    m_tick_publisher = GetPointer(tick_publisher);
+    m_tick_ev_sub = GetPointer(tick_event_subject);
 }
 
 CommandResult CommandExecutor::execute(GetAccountResponse& response) override
@@ -64,7 +64,7 @@ CommandResult CommandExecutor::execute(GetAccountResponse& response) override
 
 CommandResult CommandExecutor::execute(const WatchSymbolRequest& request) override
 {
-    m_tick_publisher.insert(request.symbol);
+    m_tick_ev_sub.subscribe(request.symbol);
 
     return CommandResult::SUCCESS;
 }

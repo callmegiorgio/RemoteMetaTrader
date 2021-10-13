@@ -1,10 +1,9 @@
-#property version "0.2.2"
+#property version "0.3.0"
 #property strict
 
 #include "../Include/RMT/Command/RequestProcessor.mqh"
-#include "../Include/RMT/Event/TickEventPublisher.mqh"
+#include "../Include/RMT/Event/EventProcessor.mqh"
 #include "../Include/RMT/Network/Server.mqh"
-#include "../Include/RMT/Utility/sleep.mqh"
 #include "../Include/RMT/Utility/Time.mqh"
 
 //==============================================================================
@@ -31,9 +30,9 @@ typedef void(*OnTickHandler)(void);
 const Time testing_start_time(START_HOUR, START_MINUTE, START_SECOND);
 const Time testing_stop_time(STOP_HOUR, STOP_MINUTE, STOP_SECOND);
 
-Server             server;
-TickEventPublisher tick_event_publisher(server);
-RequestProcessor   request_processor(server, tick_event_publisher);
+Server              server;
+EventProcessor      event_processor(server);
+RequestProcessor    request_processor(server, event_processor.tick_event_subject());
 
 // Branches out `OnTick()` logic to different functions, depending on whether
 // the Expert is run by Strategy Tester or not.
@@ -84,7 +83,7 @@ void OnTick()
 void OnTimer()
 {
     request_processor.process_requests();
-    tick_event_publisher.process_events();
+    event_processor.process_events();
 }
 
 /// Called by `OnTick()` if the Expert is being run by Strategy Tester.
@@ -107,16 +106,16 @@ void on_tester_tick()
     }
 
     request_processor.process_requests();
-    tick_event_publisher.process_events();
+    event_processor.process_events();
 
     //==============================================================================
     // Synchronize the expert server with clients.
     //
-    // After the above call to `tick_event_publisher.process_events()` returns, new
-    // tick events may have been sent to clients, which in turn may make clients
-    // process them and want to place orders on that tick. So, the server waits a
-    // while to receive further client requests in case a client decides to place,
-    // close, or modify an order, or do anything on that tick we just sent.
+    // After the above call to `event_processor.process_events()` returns, new tick
+    // events may have been sent to clients, which in turn may make clients process
+    // them and want to place orders on that tick. So, the server waits a while to
+    // receive further client requests in case a client decides to place, close, or
+    // modify an order, or do anything on that tick we just sent.
     //
     // Here's an example to illustrate this. Say a tick of a trading instrument is
     // 200.16. A client that's interested in such an instrument receives this tick
@@ -130,9 +129,9 @@ void on_tester_tick()
     // Thus, by calling the `RequestProcessor` another time, we make sure clients
     // will place or close orders on the latest ticks on Strategy Tester.
     //
-    // None of this is required when the expert is attached to a chart, that is,
-    // when it's not run by the Strategy Tester, because `OnTimer()` will be called
-    // and requests will be eventually processed.
+    // Note that this is only required when the expert is not attached to a chart,
+    // that is, when it's run by the Strategy Tester. For chart-attached experts,
+    // `OnTimer()` will be eventually called and requests will be processed anyway.
     //==============================================================================
     request_processor.process_requests();
 }
@@ -141,5 +140,5 @@ void on_tester_tick()
 void on_chart_tick()
 {
     request_processor.process_requests();
-    tick_event_publisher.process_events();
+    event_processor.process_events();
 }
