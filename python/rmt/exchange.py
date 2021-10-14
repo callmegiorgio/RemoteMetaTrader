@@ -198,7 +198,7 @@ class Exchange(QObject):
         
         return bars[0]
 
-    def subscribe(self, symbol: str):
+    def subscribe(self, symbol: str) -> None:
         """Begins to receive quote updates of an instrument.
 
         Parameters
@@ -214,7 +214,7 @@ class Exchange(QObject):
 
         raise error.NotImplementedException(self.__class__, 'subscribe')
 
-    def subscribe_all(self):
+    def subscribe_all(self) -> None:
         """Begins to receive quote updates of all instruments.
 
         Raises
@@ -225,7 +225,7 @@ class Exchange(QObject):
 
         raise error.NotImplementedException(self.__class__, 'subscribe_all')
 
-    def unsubscribe(self, symbol: str):
+    def unsubscribe(self, symbol: str) -> None:
         """Stops receiving quote updates of an instrument.
 
         Raises
@@ -239,7 +239,7 @@ class Exchange(QObject):
 
         raise error.NotImplementedException(self.__class__, 'unsubscribe')
 
-    def unsubscribe_all(self):
+    def unsubscribe_all(self) -> None:
         """Stops receiving quote updates of all instruments.
 
         Raises
@@ -370,7 +370,7 @@ class Exchange(QObject):
                      take_profit: Optional[float]    = None,
                      price:       Optional[float]    = None,
                      expiration:  Optional[datetime] = None
-    ):
+    ) -> None:
         """Modifies a pending or filled order.
 
         Description
@@ -425,7 +425,7 @@ class Exchange(QObject):
 
         raise error.NotImplementedException(self.__class__, 'modify_order')
 
-    def cancel_order(self, ticket: int):
+    def cancel_order(self, ticket: int) -> None:
         """Cancels a pending order.
 
         Description
@@ -555,5 +555,5 @@ class Exchange(QObject):
     def orders(self) -> Dict[int, Order]:
         raise error.NotImplementedException(self.__class__, 'orders')
 
-    def process_events(self):
+    def process_events(self) -> None:
         raise error.NotImplementedException(self.__class__, 'process_events')
