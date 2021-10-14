@@ -433,7 +433,6 @@ class MetaTrader4(Exchange):
             ticket = new_order.ticket()
 
             order = Order(
-                ticket       = new_order.ticket(),
                 symbol       = order.symbol(),
                 side         = order.side(),
                 type         = order.type(),
