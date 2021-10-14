@@ -4,29 +4,36 @@ import logging
 
 class MyStrategy(rmt.Strategy):
     def __init__(self, exchange: rmt.Exchange):
-        super().__init__(exchange)
+        super().__init__(exchange, 'US100')
 
-        self._last_order_ticket = None
         self._done = False
 
-    def on_tick(self, symbol: str, server_time: datetime, bid: float, ask: float):
-        print(symbol, server_time, bid, ask)
+    def on_tick(self, tick: rmt.Tick):
+        print(self.instrument.symbol, '-', tick)
 
         if self._done:
             return
+
+        active_orders = self.active_orders()
         
-        if self._last_order_ticket is None:
-            self._last_order_ticket = exchange.place_order(symbol, rmt.Side.BUY, rmt.OrderType.MARKET_ORDER, 1, ask, 100)
+        if len(active_orders) == 0:
+            ticket = self.place_order(
+                side       = rmt.Side.BUY,
+                order_type = rmt.OrderType.MARKET_ORDER,
+                lots       = 1,
+                price      = tick.ask,
+                slippage   = 100
+            )
 
-            print('filled order:', self._last_order_ticket)
+            print('filled order #{}'.format(ticket))
         else:
-            new_ticket = exchange.close_order(self._last_order_ticket, lots=0.5)
+            ticket     = active_orders.pop()
+            new_ticket = self.close_order(ticket, lots=0.5)
 
-            print('closed order:', self._last_order_ticket)
+            print('closed order #{}'.format(ticket))
 
-            if self._last_order_ticket != new_ticket:
-                print('new order:', new_ticket)
-                self._last_order_ticket = new_ticket
+            if ticket != new_ticket:
+                print('new order #{}'.format(new_ticket))
             else:
                 self._done = True
     
@@ -37,8 +44,6 @@ logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
 exchange = rmt.exchanges.MetaTrader4()
-exchange.subscribe('US100')
-
 strategy = MyStrategy(exchange)
 
 while not strategy.is_done():

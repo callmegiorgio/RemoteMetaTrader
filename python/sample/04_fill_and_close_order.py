@@ -4,23 +4,33 @@ import logging
 
 class MyStrategy(rmt.Strategy):
     def __init__(self, exchange: rmt.Exchange):
-        super().__init__(exchange)
+        super().__init__(exchange, 'US100')
 
-        self._last_order = None
         self._done = False
 
-    def on_tick(self, symbol: str, server_time: datetime, bid: float, ask: float):
-        print(symbol, server_time, bid, ask)
+    def on_tick(self, tick: rmt.Tick):
+        print(self.instrument.symbol, '-', tick)
 
         if self._done:
             return
 
-        if self._last_order is None:
-            self._last_order = exchange.place_order(symbol, rmt.Side.BUY, rmt.OrderType.MARKET_ORDER, 1)
-            print('filled order:', self._last_order)
+        active_orders = self.active_orders()
+        
+        if len(active_orders) == 0:
+            ticket = self.place_order(
+                side       = rmt.Side.BUY,
+                order_type = rmt.OrderType.MARKET_ORDER,
+                lots       = 1
+            )
+
+            print('filled order #{}'.format(ticket))
         else:
-            exchange.close_order(self._last_order)
-            print('closed order:', self._last_order)
+            ticket = active_orders.pop()
+
+            self.close_order(ticket)
+            
+            print('closed order #{}'.format(ticket))
+
             self._done = True
 
     def is_done(self) -> bool:
@@ -30,8 +40,6 @@ logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
 exchange = rmt.exchanges.MetaTrader4()
-exchange.subscribe('US100')
-
 strategy = MyStrategy(exchange)
 
 while not strategy.is_done():
