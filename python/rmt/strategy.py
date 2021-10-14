@@ -1,43 +1,208 @@
+import rmt
 from datetime     import datetime, timedelta
-from typing       import Optional
+from typing       import Optional, Set
 from PyQt5.QtCore import QObject, pyqtSlot
-from rmt          import Exchange, Tick, Bar
+from rmt          import (
+    Exchange, Tick, Bar, Performance, Instrument, Order,
+    OrderStatus, Timeframe
+)
 
 class Strategy(QObject):
     """
     Building block of algorithmic trading.
 
-    The strategy class draws a line separating manual trading from automated trading.
+    Description
+    -----------
+    The class `Strategy` draws a line separating manual trading from automated trading.
     While manual trades may be done by invoking methods of an `Exchange` directly,
-    the strategy class allows a machine-driven form of trading.
+    this class is intended to be used for a machine-driven form of trading.
 
-    The methods `Strategy.on_tick()` and `Strategy.on_bar_closed()` are provided for
-    strategy-specific logic, and should be overloaded by subclasses.
+    It's part of the design of this class to compartimentalize trade execution by
+    tracking `Strategy`-made orders and keeping trade operations isolated from the
+    `Exchange` which a strategy depends on. For that reason, the `Exchange` which
+    a strategy is running on is purposefully not made available, whether as a method
+    or an attribute. This is because orders placed by `Strategy` or its subclasses
+    are expected to be made by `Strategy.place_order()`, not `Exchange.place_order()`.
+    The same applies to all other `Exchange`-based methods, such as `Strategy.close_order()`,
+    `Strategy.get_order()`, etc.
 
-    After a bar closes, `Strategy.on_bar_closed()` is invoked immediately before
-    `Strategy.on_tick()`.
+    Instances of `Strategy` are expected to work mainly with a main trading instrument.
+    This is also part of the design of this class, since arbitrage is not inherent to
+    all strategies. While some strategies may be developed for one instrument only,
+    other strategies may be developed for many instruments. In the latter case, a
+    same strategy may be run with different instruments by creating several instances
+    of it:
+
+    ```
+    eurusd_strategy = Strategy(exchange, 'EURUSD')
+    usdjpy_strategy = Strategy(exchange, 'USDJPY')
+    ```
+
+    If arbitrage or a similar logic is required by a strategy, methods for retrieving
+    data of another symbol are provided, but the strategy must have a main instrument
+    nonetheless:
+    
+    >>> arbitrage_strategy = Strategy(exchange, 'EURUSD')
+    >>> arbitrage_strategy.instrument.symbol
+    'EURUSD'
+    >>> arbitrage_strategy.get_bar()
+    <current EURUSD M1 bar>
+    >>> arbitrage_strategy.get_bar(symbol='USDJPY')
+    <current USDJPY M1 bar>
     """
 
-    def __init__(self, exchange: Exchange):
+    def __init__(self, exchange: Exchange, symbol: str):
         super().__init__()
 
-        self._exchange = exchange
-        self._exchange.tick_received.connect(self._on_tick_received)
+        exchange.subscribe(symbol)
+
+        self._exchange   = exchange
+        self._instrument = exchange.get_instrument(symbol)
+
         self._last_closed_bar_time: Optional[datetime] = None
+        
+        self._active_orders: Set[int] = set()
+        self._history_orders: Set[int] = set()
+
+        self._exchange.tick_received.connect(self._on_tick_received)
+        self._exchange.order_filled.connect(self._on_order_filled)
+        self._exchange.order_expired.connect(self._on_order_expired)
+        self._exchange.order_canceled.connect(self._on_order_canceled)
+        self._exchange.order_closed.connect(self._on_order_closed)
 
     @property
-    def exchange(self) -> Exchange:
-        """The exchange on which the strategy is running."""
+    def instrument(self) -> Instrument:
+        """Main instrument traded by this strategy."""
 
-        return self._exchange
+        return self._instrument
 
-    def on_tick(self, symbol: str, server_time: datetime, bid: float, ask: float):
-        """Method invoked when an instrument's new quotes is received."""
+    def active_orders(self) -> Set[int]:
+        """Set of active orders placed by this strategy."""
+        
+        return self._active_orders.copy()
+
+    def history_orders(self) -> Set[int]:
+        """Set of history orders which were placed by this strategy."""
+
+        return self._history_orders.copy()
+
+    def performance(self) -> Performance:
+        """Performance of this strategy, calculated by its closed orders."""
+
+        orders = [self._exchange.get_order(ticket) for ticket in self._history_orders]
+
+        return Performance(orders, 2)
+
+    def get_instrument(self, symbol: str) -> Instrument:
+        """Retrieves an instrument from the exchange which this strategy is running on."""
+
+        return self._exchange.get_instrument(symbol)
+
+    def get_bar(self, index: int = 0, timeframe: Timeframe = Timeframe.M1, symbol: str = ...) -> Bar:
+        """Retrieves a bar of an instrument.
+        
+        If `symbol` is provided, retrieves a bar of the instrument identified by `symbol`.
+        Otherwise, retrieves a bar of this strategy's main instrument.
+        """
+
+        if symbol is Ellipsis:
+            symbol = self.instrument.symbol
+
+        return self._exchange.get_bar(symbol=symbol, index=index, timeframe=timeframe)
+
+    def get_order(self, ticket: int) -> Order:
+        """Retrieves information of an order placed by this strategy.
+        
+        Parameters
+        ----------
+        ticket : int
+            Ticket that identifies an order placed by this strategy.
+
+        Raises
+        ------
+        InvalidTicket
+            If `ticket` does not identify an order placed by this strategy.
+        """
+
+        if ticket in self._active_orders or ticket in self._history_orders:
+            return self._exchange.get_order(ticket)
+
+        raise rmt.error.InvalidTicket(ticket)
+
+    def place_order(self, **kwargs) -> int:
+        kwargs.setdefault('symbol', self.instrument.symbol)
+
+        ticket = self._exchange.place_order(**kwargs)
+
+        self._active_orders.add(ticket)
+
+        return ticket
+
+    def modify_order(self, ticket: int, **kwargs):
+        if ticket not in self._active_orders:
+            raise rmt.error.InvalidTicket(ticket)
+        
+        self._exchange.modify_order(ticket=ticket, **kwargs)
+
+    def cancel_order(self, ticket: int):
+        if ticket not in self._active_orders:
+            raise rmt.error.InvalidTicket(ticket)
+
+        self._exchange.cancel_order(ticket)
+
+        self._active_orders.remove(ticket)
+        self._history_orders.add(ticket)
+
+    def close_order(self, ticket: int, **kwargs) -> int:
+        if ticket not in self._active_orders:
+            raise rmt.error.InvalidTicket(ticket)
+
+        new_ticket = self._exchange.close_order(ticket, **kwargs)
+
+        self._active_orders.remove(ticket)
+
+        if new_ticket != ticket:
+            self._active_orders.add(new_ticket)
+
+        self._history_orders.add(ticket)
+
+        return new_ticket
+    
+    #===============================================================================
+    # Polymorphic methods
+    #===============================================================================
+    def on_tick(self, tick: Tick):
+        """Method invoked when new quote is received."""
 
         pass
 
-    def on_bar_closed(self, symbol: str, bar: Bar):
+    def on_bar_closed(self, bar: Bar):
         """Method invoked when an instrument's bar is closed."""
+
+        pass
+
+    def on_order_filled(self, ticket: int):
+        """Method invoked when a pending order placed by the strategy is filled."""
+
+        pass
+
+    def on_order_canceled(self, ticket: int):
+        """Method invoked when an order placed by the strategy is canceled."""
+
+        pass
+
+    def on_order_expired(self, ticket: int):
+        """Method invoked when an order placed by the strategy is expired."""
+
+        pass
+
+    def on_order_modified(self, ticket: int):
+        """Method invoked when an order placed by the strategy is modified."""
+
+        pass
+
+    def on_order_closed(self, ticket: int):
+        """Method invoked when an order placed by the strategy is closed."""
 
         pass
 
@@ -46,6 +211,9 @@ class Strategy(QObject):
     #===============================================================================
     @pyqtSlot(str, Tick)
     def _on_tick_received(self, symbol: str, tick: Tick):
+        if symbol != self.instrument.symbol:
+            return
+
         last_closed_bar_time = tick.server_time.replace(second=0) - timedelta(0, 60, 0)
 
         if self._last_closed_bar_time is None:
@@ -53,9 +221,54 @@ class Strategy(QObject):
         elif self._last_closed_bar_time != last_closed_bar_time:
             self._last_closed_bar_time = last_closed_bar_time
 
-            closed_bar = self.exchange.get_history_bar(symbol, last_closed_bar_time)
+            closed_bar = self._exchange.get_history_bar(symbol, last_closed_bar_time)
 
             if closed_bar is not None:
-                self.on_bar_closed(symbol, closed_bar)
+                self.on_bar_closed(closed_bar)
 
-        self.on_tick(symbol, tick.server_time, tick.bid, tick.ask)
+        self.on_tick(tick)
+
+    @pyqtSlot(int)
+    def _on_order_filled(self, ticket: int):
+        if ticket in self._active_orders:
+            order = self._exchange.get_order(ticket)
+
+            if order.status() != OrderStatus.PENDING:
+                return
+
+            self._active_orders.remove(ticket)
+            self._history_orders.add(ticket)
+
+            self.on_order_filled(ticket)
+
+    @pyqtSlot(int)
+    def _on_order_canceled(self, ticket: int):
+        if ticket in self._active_orders:
+            self._active_orders.remove(ticket)
+            self._history_orders.add(ticket)
+
+            self.on_order_canceled(ticket)
+
+    @pyqtSlot(int)
+    def _on_order_expired(self, ticket: int):
+        if ticket in self._active_orders:
+            self._active_orders.remove(ticket)
+            self._history_orders.add(ticket)
+
+            self.on_order_expired(ticket)
+
+    @pyqtSlot(int)
+    def _on_order_modified(self, ticket: int):
+        if ticket in self._active_orders:
+            self._active_orders.remove(ticket)
+            self._history_orders.add(ticket)
+
+            self.on_order_modified(ticket)
+
+    @pyqtSlot(int)
+    def _on_order_closed(self, ticket: int):
+        if ticket in self._active_orders:
+            self._active_orders.remove(ticket)
+            self._history_orders.add(ticket)
+
+            self.on_order_closed(ticket)
