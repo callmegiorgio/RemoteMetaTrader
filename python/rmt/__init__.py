@@ -1,5 +1,7 @@
 from .slotted_class import SlottedClass
 from .              import jsonutil
+from .              import predicate
+from .predicate     import Predicate, TimePredicate
 from .account       import Account
 from .tick          import Tick, read_ticks_from_csv
 from .instrument    import Instrument
@@ -11,3 +13,4 @@ from .timeframe     import Timeframe
 from .exchange      import Exchange
 from .strategy      import Strategy
 from .              import exchanges
+from .              import strategies
