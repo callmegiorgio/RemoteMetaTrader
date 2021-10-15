@@ -23,7 +23,7 @@ class TimeBasedStrategy(Strategy):
     
     ```
     nasdaq_strategy = TimeBasedStrategy(exchange, 'US100')
-    nasdaq_strategy.add_tick_handler(predicate.AtMinute(hour=2, minute=30), on_nasdaq_opening_tick)
+    nasdaq_strategy.add_tick_handler(predicate.AtMinute(hour=14, minute=30), on_nasdaq_opening_tick)
     ```
 
     This strategy will invoke the function `on_nasdaq_opening_tick()` for every tick
