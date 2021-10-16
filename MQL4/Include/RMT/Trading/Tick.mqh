@@ -1,5 +1,8 @@
 #property strict
 
+// Local
+#include "../Utility/sleep.mqh"
+
 class Tick {
 public:
     static bool current(string symbol, Tick& tick);
@@ -39,17 +42,53 @@ static bool Tick::current(string symbol, Tick& tick)
         if (IsTesting())
             return false;
 
+        long is_symbol_selected;
+
+        // See if symbol is already selected. If we failed to get the information,
+        // assume it's not selected.
+        if (!SymbolInfoInteger(symbol, SYMBOL_SELECT, is_symbol_selected))
+            is_symbol_selected = 0;
+
         if (!SymbolSelect(symbol, true))
             return false;
         
         MqlTick last_tick;
 
-        if (!SymbolInfoTick(symbol, last_tick))
-            return false;
+        // The function `SymbolInfoTick()` only works for symbols selected in the Market
+        // Watch window. Which is what we have just done above by calling `SymbolSelect()`.
+        //
+        // However, it happens that immediately after selecting a symbol, MQL will most
+        // of the times return a `MqlTick` with zeroed members, because will have not
+        // been received from the trade server yet.
+        //
+        // So, what the following logic does is sleep for `sleep_msec_step` until either
+        // data is received from the trade server or `max_sleep_msec` is reached.
+        const uint max_sleep_msec  = 1000;
+        const uint sleep_msec_step = 10;
 
-        tick.m_server_time = last_tick.time;
-        tick.m_bid         = last_tick.bid;
-        tick.m_ask         = last_tick.ask;
+        for (uint i = 0; i < max_sleep_msec; i += sleep_msec_step)
+        {
+            if (!SymbolInfoTick(symbol, last_tick))
+                return false;
+
+            // If at least one data member of `MqlTick` is not zeroed, that means
+            // we got data.
+            if (last_tick.time != 0)
+            {
+                tick.m_server_time = last_tick.time;
+                tick.m_bid         = last_tick.bid;
+                tick.m_ask         = last_tick.ask;
+
+                break;
+            }
+
+            sleep(sleep_msec_step);
+        }
+
+        // If symbol was not selected at first, and we made it selected, unselect it.
+        // Let's not clutter the Market Watch window, shall we?
+        if (!is_symbol_selected)
+            SymbolSelect(symbol, false);
     }
 
     return true;
