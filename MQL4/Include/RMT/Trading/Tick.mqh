@@ -61,6 +61,11 @@ Tick::Tick(datetime server_time, double bid, double ask)
     m_ask         = ask;
 }
 
+Tick::Tick(const Tick& other)
+{
+    this.operator=(other);
+}
+
 datetime Tick::server_time() const
 {
     return m_server_time;
