@@ -480,6 +480,18 @@ class MetaTrader4(Exchange):
 
         return response.order()
 
+    def get_exchange_rate(self, base_currency: str, quote_currency: str) -> float:
+        request = requests.GetExchangeRateRequest(base_currency, quote_currency)
+
+        try:
+            response = responses.GetExchangeRateResponse(self._send_request(request))
+            return response.rate()
+        except MQL4Error as e:
+            if e.code == CommandResultCode.EXCHANGE_RATE_FAILED:
+                raise rmt.error.ExchangeRateError(base_currency, quote_currency)
+            else:
+                raise e
+
     def process_events(self):
         while True:
             try:

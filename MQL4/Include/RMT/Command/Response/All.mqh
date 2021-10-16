@@ -4,6 +4,7 @@
 #include "CloseOrderResponse.mqh"
 #include "GetAccountResponse.mqh"
 #include "GetBarResponse.mqh"
+#include "GetExchangeRateResponse.mqh"
 #include "GetHistoryBarsResponse.mqh"
 #include "GetInstrumentResponse.mqh"
 #include "GetOrderResponse.mqh"

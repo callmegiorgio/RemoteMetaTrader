@@ -5,6 +5,7 @@
 
 // Local
 #include "../Event/TickEventSubject.mqh"
+#include "../Trading/get_exchange_rate.mqh"
 #include "../Trading/Tick.mqh"
 #include "CommandDispatcher.mqh"
 
@@ -20,13 +21,14 @@ private:
     CommandResult execute(const ModifyOrderRequest& request) override;
     CommandResult execute(const CancelOrderRequest& request) override;
 
-    CommandResult execute(const GetTickRequest&        request, GetTickResponse&        response) override;
-    CommandResult execute(const GetInstrumentRequest&  request, GetInstrumentResponse&  response) override;
-    CommandResult execute(const GetBarRequest&         request, GetBarResponse&         response) override;
-    CommandResult execute(const GetHistoryBarsRequest& request, GetHistoryBarsResponse& response) override;
-    CommandResult execute(const GetOrderRequest&       request, GetOrderResponse&       response) override;
-    CommandResult execute(const PlaceOrderRequest&     request, PlaceOrderResponse&     response) override;
-    CommandResult execute(const CloseOrderRequest&     request, CloseOrderResponse&     response) override;
+    CommandResult execute(const GetTickRequest&         request, GetTickResponse&         response) override;
+    CommandResult execute(const GetInstrumentRequest&   request, GetInstrumentResponse&   response) override;
+    CommandResult execute(const GetBarRequest&          request, GetBarResponse&          response) override;
+    CommandResult execute(const GetHistoryBarsRequest&  request, GetHistoryBarsResponse&  response) override;
+    CommandResult execute(const GetExchangeRateRequest& request, GetExchangeRateResponse& response) override;
+    CommandResult execute(const GetOrderRequest&        request, GetOrderResponse&        response) override;
+    CommandResult execute(const PlaceOrderRequest&      request, PlaceOrderResponse&      response) override;
+    CommandResult execute(const CloseOrderRequest&      request, CloseOrderResponse&      response) override;
 
     TickEventSubject* m_tick_ev_sub;
 };
@@ -227,6 +229,14 @@ CommandResult CommandExecutor::execute(const GetOrderRequest& request, GetOrderR
     response.commission   = OrderCommission();
     response.profit       = OrderProfit();
     response.swap         = OrderSwap();
+
+    return CommandResult::SUCCESS;
+}
+
+CommandResult CommandExecutor::execute(const GetExchangeRateRequest& request, GetExchangeRateResponse& response) override
+{
+    if (!get_exchange_rate(request.base_currency, request.quote_currency, response.rate))
+        return CommandResult::EXCHANGE_RATE_FAILED;
 
     return CommandResult::SUCCESS;
 }

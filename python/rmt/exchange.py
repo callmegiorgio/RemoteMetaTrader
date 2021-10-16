@@ -552,6 +552,30 @@ class Exchange(QObject):
 
         raise error.NotImplementedException(self.__class__, 'place_order')
 
+    def get_exchange_rate(self, base_currency: str, quote_currency: str) -> float:
+        """Retrieves the exchange rate of two currencies.
+
+        Parameters
+        ----------
+        base_currency : str
+            A base currency.
+        
+        quote_currency : str
+            A quote currency.
+
+        Raises
+        ------
+        ExchangeRateError
+            If no rate is found for the currency pair.
+
+        Returns
+        -------
+        float
+            Exchange rate of the currencies.
+        """
+
+        return error.NotImplementedException(self.__class__, 'get_exchange_rate')
+
     def orders(self) -> Dict[int, Order]:
         raise error.NotImplementedException(self.__class__, 'orders')
 

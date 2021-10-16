@@ -10,6 +10,7 @@ class CommandResultCode(IntEnum):
     INVALID_JSON_KEY_TYPE        = -10005
     INVALID_JSON_INDEX_TYPE      = -10006
     INVALID_ORDER_STATUS         = -10007
+    EXCHANGE_RATE_FAILED         = -10008
     NO_RESULT                    = 1
     COMMON_ERROR                 = 2
     INVALID_TRADE_PARAMETERS     = 3

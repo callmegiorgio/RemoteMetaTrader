@@ -41,6 +41,7 @@ public:
     static const int INVALID_JSON_KEY_TYPE;   /// A required key is found, but its value type differs from the expected type.
     static const int INVALID_JSON_INDEX_TYPE; /// A required index is found, but its value type differs from the expected type.
     static const int INVALID_ORDER_STATUS;    /// The current order status does not allow this kind of operation.
+    static const int EXCHANGE_RATE_FAILED;
     static const int NO_RESULT;
     static const int COMMON_ERROR;
     static const int INVALID_TRADE_PARAMETERS;
@@ -300,6 +301,7 @@ static const int CommandResult::MISSING_JSON_INDEX           = -10004;
 static const int CommandResult::INVALID_JSON_KEY_TYPE        = -10005;
 static const int CommandResult::INVALID_JSON_INDEX_TYPE      = -10006;
 static const int CommandResult::INVALID_ORDER_STATUS         = -10007;
+static const int CommandResult::EXCHANGE_RATE_FAILED         = -10008;
 static const int CommandResult::NO_RESULT                    = 1;
 static const int CommandResult::COMMON_ERROR                 = 2;
 static const int CommandResult::INVALID_TRADE_PARAMETERS     = 3;

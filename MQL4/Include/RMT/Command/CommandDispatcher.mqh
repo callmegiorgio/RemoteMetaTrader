@@ -79,13 +79,14 @@ protected:
     //==============================================================================
     // Request-and-response commands.
     //==============================================================================
-    virtual CommandResult execute(const GetTickRequest&        request, GetTickResponse&        response) = 0;
-    virtual CommandResult execute(const GetInstrumentRequest&  request, GetInstrumentResponse&  response) = 0;
-    virtual CommandResult execute(const GetBarRequest&         request, GetBarResponse&         response) = 0;
-    virtual CommandResult execute(const GetHistoryBarsRequest& request, GetHistoryBarsResponse& response) = 0;
-    virtual CommandResult execute(const GetOrderRequest&       request, GetOrderResponse&       response) = 0;
-    virtual CommandResult execute(const PlaceOrderRequest&     request, PlaceOrderResponse&     response) = 0;
-    virtual CommandResult execute(const CloseOrderRequest&     request, CloseOrderResponse&     response) = 0;
+    virtual CommandResult execute(const GetTickRequest&         request, GetTickResponse&         response) = 0;
+    virtual CommandResult execute(const GetInstrumentRequest&   request, GetInstrumentResponse&   response) = 0;
+    virtual CommandResult execute(const GetBarRequest&          request, GetBarResponse&          response) = 0;
+    virtual CommandResult execute(const GetHistoryBarsRequest&  request, GetHistoryBarsResponse&  response) = 0;
+    virtual CommandResult execute(const GetExchangeRateRequest& request, GetExchangeRateResponse& response) = 0;
+    virtual CommandResult execute(const GetOrderRequest&        request, GetOrderResponse&        response) = 0;
+    virtual CommandResult execute(const PlaceOrderRequest&      request, PlaceOrderResponse&      response) = 0;
+    virtual CommandResult execute(const CloseOrderRequest&      request, CloseOrderResponse&      response) = 0;
 
 private:
     typedef CommandResult(*ExecuteFunctionPointer)(CommandDispatcher&, CommandArguments&);
@@ -177,13 +178,14 @@ CommandDispatcher::CommandDispatcher()
     register_request_only_command<ModifyOrderRequest>("modifyOrder");
     register_request_only_command<CancelOrderRequest>("cancelOrder");
 
-    register_request_response_command<GetTickRequest,        GetTickResponse       >("getTick");
-    register_request_response_command<GetInstrumentRequest,  GetInstrumentResponse >("getInstrument");
-    register_request_response_command<GetBarRequest,         GetBarResponse        >("getBar");
-    register_request_response_command<GetHistoryBarsRequest, GetHistoryBarsResponse>("getHistoryBars");
-    register_request_response_command<GetOrderRequest,       GetOrderResponse      >("getOrder");
-    register_request_response_command<PlaceOrderRequest,     PlaceOrderResponse    >("placeOrder");
-    register_request_response_command<CloseOrderRequest,     CloseOrderResponse    >("closeOrder");
+    register_request_response_command<GetTickRequest,         GetTickResponse        >("getTick");
+    register_request_response_command<GetInstrumentRequest,   GetInstrumentResponse  >("getInstrument");
+    register_request_response_command<GetBarRequest,          GetBarResponse         >("getBar");
+    register_request_response_command<GetHistoryBarsRequest,  GetHistoryBarsResponse >("getHistoryBars");
+    register_request_response_command<GetExchangeRateRequest, GetExchangeRateResponse>("getExchangeRate");
+    register_request_response_command<GetOrderRequest,        GetOrderResponse       >("getOrder");
+    register_request_response_command<PlaceOrderRequest,      PlaceOrderResponse     >("placeOrder");
+    register_request_response_command<CloseOrderRequest,      CloseOrderResponse     >("closeOrder");
 }
 
 CommandDispatcher::~CommandDispatcher()

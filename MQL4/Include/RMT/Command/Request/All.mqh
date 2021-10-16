@@ -4,6 +4,7 @@
 #include "CancelOrderRequest.mqh"
 #include "CloseOrderRequest.mqh"
 #include "GetBarRequest.mqh"
+#include "GetExchangeRateRequest.mqh"
 #include "GetHistoryBarsRequest.mqh"
 #include "GetInstrumentRequest.mqh"
 #include "GetOrderRequest.mqh"

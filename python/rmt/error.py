@@ -86,3 +86,11 @@ class InvalidOrderStatus(ExecutionError):
         error_msg = "invalid order status '{}' for operation".format(status)
 
         super().__init__(error_msg)
+
+class ExchangeRateError(ExecutionError):
+    """Raised if no exchange rate is found for a currency pair."""
+
+    def __init__(self, base_currency: str, quote_currency: str):
+        error_msg = "no exchange rate found for currency pair {0}/{1}".format(base_currency, quote_currency)
+
+        super().__init__(error_msg)
