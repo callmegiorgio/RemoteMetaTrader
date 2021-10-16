@@ -9,6 +9,7 @@ public:
 
     bool get(T& value) const;
     T value_or(T fallback) const;
+    T value() const;
 
     void reset();
 

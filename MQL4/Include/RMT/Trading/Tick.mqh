@@ -5,6 +5,7 @@ public:
     static bool current(string symbol, Tick& tick);
 
     Tick(datetime server_time = 0, double bid = 0, double ask = 0);
+    Tick(const Tick& other);
 
     datetime server_time() const;
     double bid() const;
