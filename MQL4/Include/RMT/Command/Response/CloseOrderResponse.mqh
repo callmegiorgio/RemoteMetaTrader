@@ -5,6 +5,20 @@
 
 class CloseOrderResponseNewOrder {
 public:
+    CloseOrderResponseNewOrder()
+    {}
+
+    CloseOrderResponseNewOrder(const CloseOrderResponseNewOrder& other)
+    {
+        this.ticket       = other.ticket;
+        this.lots         = other.lots;
+        this.magic_number = other.magic_number;
+        this.comment      = other.comment;
+        this.commission   = other.commission;
+        this.profit       = other.profit;
+        this.swap         = other.swap;
+    }
+
     void write(JsonWriter& writer) const
     {
         writer.write("ticket",     this.ticket);

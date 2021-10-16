@@ -30,7 +30,8 @@ public:
     ~OptionalComplex();
 
     bool get(T& value) const;
-    void get_or(T& value, const T& fallback) const;
+    T* value_or(T* fallback) const;
+    T* value() const;
 
     void reset();
 
@@ -85,6 +86,12 @@ T Optional::value_or(T fallback) const
 }
 
 template <typename T>
+T Optional::value() const
+{
+    return value_or(NULL);
+}
+
+template <typename T>
 void Optional::reset()
 {
     ArrayResize(m_value, 0);
@@ -125,8 +132,7 @@ OptionalComplex::OptionalComplex()
 template <typename T>
 OptionalComplex::OptionalComplex(const T& value)
 {
-    m_value = new T();
-    m_value = value;
+    m_value = new T(value);
 }
 
 template <typename T>
@@ -153,10 +159,18 @@ bool OptionalComplex::get(T& value) const
 }
 
 template <typename T>
-void OptionalComplex::get_or(T& value, const T& fallback) const
+T* OptionalComplex::value_or(T* fallback) const
 {
-    if (!get(value))
-        value = fallback;
+    if (!has_value())
+        return m_value;
+
+    return fallback;
+}
+
+template <typename T>
+T* OptionalComplex::value() const
+{
+    return m_value;
 }
 
 template <typename T>
@@ -179,9 +193,8 @@ template <typename T>
 OptionalComplex* OptionalComplex::operator=(const T& value)
 {
     if (!has_value())
-        m_value = new T();
-
-    if (has_value())
+        m_value = new T(value);
+    else
         m_value = value;
 
     return GetPointer(this);
