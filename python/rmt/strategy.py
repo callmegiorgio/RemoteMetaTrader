@@ -1,10 +1,9 @@
 import rmt
 from datetime     import datetime, timedelta
 from typing       import Optional, Set
-from PyQt5.QtCore import QObject, pyqtSlot
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from rmt          import (
-    Exchange, Tick, Bar, Performance, Instrument, Order,
-    OrderStatus, Timeframe
+    Exchange, Tick, Bar, Performance, Instrument, Order, Timeframe
 )
 
 class Strategy(QObject):
@@ -51,6 +50,15 @@ class Strategy(QObject):
     <current USDJPY M1 bar>
     """
 
+    tick_received  = pyqtSignal(Tick)
+    bar_closed     = pyqtSignal(Bar)
+    order_opened   = pyqtSignal(int)
+    order_expired  = pyqtSignal(int)
+    order_canceled = pyqtSignal(int)
+    order_modified = pyqtSignal(int)
+    order_filled   = pyqtSignal(int)
+    order_closed   = pyqtSignal(int)
+
     def __init__(self, exchange: Exchange, symbol: str):
         super().__init__()
 
@@ -65,9 +73,11 @@ class Strategy(QObject):
         self._history_orders: Set[int] = set()
 
         self._exchange.tick_received.connect(self._on_tick_received)
-        self._exchange.order_filled.connect(self._on_order_filled)
+        self._exchange.order_opened.connect(self._on_order_opened)
         self._exchange.order_expired.connect(self._on_order_expired)
         self._exchange.order_canceled.connect(self._on_order_canceled)
+        self._exchange.order_modified.connect(self._on_order_modified)
+        self._exchange.order_filled.connect(self._on_order_filled)
         self._exchange.order_closed.connect(self._on_order_closed)
 
     @property
@@ -167,44 +177,6 @@ class Strategy(QObject):
         self._history_orders.add(ticket)
 
         return new_ticket
-    
-    #===============================================================================
-    # Polymorphic methods
-    #===============================================================================
-    def on_tick(self, tick: Tick):
-        """Method invoked when new quote is received."""
-
-        pass
-
-    def on_bar_closed(self, bar: Bar):
-        """Method invoked when an instrument's bar is closed."""
-
-        pass
-
-    def on_order_filled(self, ticket: int):
-        """Method invoked when a pending order placed by the strategy is filled."""
-
-        pass
-
-    def on_order_canceled(self, ticket: int):
-        """Method invoked when an order placed by the strategy is canceled."""
-
-        pass
-
-    def on_order_expired(self, ticket: int):
-        """Method invoked when an order placed by the strategy is expired."""
-
-        pass
-
-    def on_order_modified(self, ticket: int):
-        """Method invoked when an order placed by the strategy is modified."""
-
-        pass
-
-    def on_order_closed(self, ticket: int):
-        """Method invoked when an order placed by the strategy is closed."""
-
-        pass
 
     #===============================================================================
     # Internals
@@ -224,22 +196,16 @@ class Strategy(QObject):
             closed_bar = self._exchange.get_history_bar(symbol, last_closed_bar_time)
 
             if closed_bar is not None:
-                self.on_bar_closed(closed_bar)
+                self.bar_closed.emit(closed_bar)
 
-        self.on_tick(tick)
+        self.tick_received.emit(tick)
 
     @pyqtSlot(int)
-    def _on_order_filled(self, ticket: int):
+    def _on_order_opened(self, ticket: int):
         if ticket in self._active_orders:
-            order = self._exchange.get_order(ticket)
+            self._active_orders.add(ticket)
 
-            if order.status() != OrderStatus.PENDING:
-                return
-
-            self._active_orders.remove(ticket)
-            self._history_orders.add(ticket)
-
-            self.on_order_filled(ticket)
+            self.order_opened.emit(ticket)
 
     @pyqtSlot(int)
     def _on_order_canceled(self, ticket: int):
@@ -247,7 +213,7 @@ class Strategy(QObject):
             self._active_orders.remove(ticket)
             self._history_orders.add(ticket)
 
-            self.on_order_canceled(ticket)
+            self.order_canceled.emit(ticket)
 
     @pyqtSlot(int)
     def _on_order_expired(self, ticket: int):
@@ -255,15 +221,17 @@ class Strategy(QObject):
             self._active_orders.remove(ticket)
             self._history_orders.add(ticket)
 
-            self.on_order_expired(ticket)
+            self.order_expired.emit(ticket)
 
     @pyqtSlot(int)
     def _on_order_modified(self, ticket: int):
         if ticket in self._active_orders:
-            self._active_orders.remove(ticket)
-            self._history_orders.add(ticket)
+            self.order_modified.emit(ticket)
 
-            self.on_order_modified(ticket)
+    @pyqtSlot(int)
+    def _on_order_filled(self, ticket: int):
+        if ticket in self._active_orders:
+            self.order_filled.emit(ticket)
 
     @pyqtSlot(int)
     def _on_order_closed(self, ticket: int):
@@ -271,4 +239,4 @@ class Strategy(QObject):
             self._active_orders.remove(ticket)
             self._history_orders.add(ticket)
 
-            self.on_order_closed(ticket)
+            self.order_closed.emit(ticket)

@@ -1,5 +1,6 @@
-from typing import Callable, List, Tuple
-from rmt    import Strategy, Exchange, Tick, TimePredicate
+from typing       import Callable, List, Tuple
+from PyQt5.QtCore import pyqtSlot
+from rmt          import Strategy, Exchange, Tick, TimePredicate
 
 TickHandler = Callable[[Tick], None]
 """A tick handler is a callable object that takes a `Tick` parameter."""
@@ -14,7 +15,7 @@ class TimeBasedStrategy(Strategy):
     their logic defined on specific time periods.
 
     For that, this class stores objects of type `TickHandler` along with objects
-    of type `TimePredicate`, and overloads `Strategy.on_tick()` to implement the
+    of type `TimePredicate`, and hooks `Strategy.tick_received` to implement the
     behavior of calling a tick handler when its associated time predicate is `True`.
 
     One use case for a time-based strategy is an index instrument which has high
@@ -35,10 +36,13 @@ class TimeBasedStrategy(Strategy):
 
         self._tick_handlers: List[Tuple[TimePredicate, TickHandler]] = []
 
+        self.tick_received.connect(self._notify_tick_handlers)
+
     def add_tick_handler(self, pred: TimePredicate, handler: TickHandler):
         self._tick_handlers.append((pred, handler))
 
-    def on_tick(self, tick: Tick):
+    @pyqtSlot(Tick)
+    def _notify_tick_handlers(self, tick: Tick):
         tick_time = tick.server_time.time()
 
         for pred, handler in self._tick_handlers:
