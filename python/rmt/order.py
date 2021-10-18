@@ -6,8 +6,14 @@ from rmt      import SlottedClass
 class Side(IntEnum):
     """Trade side or direction."""
 
-    BUY   = 0
-    SELL  = 1
+    BUY   = 1
+    SELL  = -1
+
+    def __mul__(self, x: float) -> float:
+        return self.value * x
+
+    def __rmul__(self, x: float) -> float:
+        return x * self.value
 
 class OrderType(IntEnum):
     """Identifies the type of an order."""
