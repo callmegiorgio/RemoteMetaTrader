@@ -1,12 +1,30 @@
-from pprint import pformat
+from rmt import SlottedClass
 
-class Instrument:
+class Instrument(SlottedClass):
     """Stores static information about a trading instrument.
     
     The class `Instrument` wraps around information about a trading instrument
     that is not subject to market changes. Dynamic information, such as its bid
     and ask prices, must be retrieved from an `Exchange`.
     """
+
+    __slots__ = [
+        '_symbol',
+        '_description',
+        '_base_currency',
+        '_profit_currency',
+        '_margin_currency',
+        '_decimal_places',
+        '_point',
+        '_tick_size',
+        '_contract_size',
+        '_lot_step',
+        '_min_lot',
+        '_max_lot',
+        '_min_stop_lvl',
+        '_freeze_lvl',
+        '_spread'
+    ]
 
     def __init__(self,
                  symbol: str,
@@ -43,31 +61,37 @@ class Instrument:
 
     @property
     def symbol(self) -> str:
-        """String identifier of the instrument."""
+        """String identifier of this instrument."""
 
         return self._symbol
 
     @property
     def description(self) -> str:
-        """Description of the instrument."""
+        """Description of this instrument."""
 
         return self._description
 
     @property
     def base_currency(self) -> str:
-        """Base currency of the instrument."""
+        """Base currency of this instrument."""
 
         return self._base_currency
 
     @property
     def profit_currency(self) -> str:
-        """Profit currency of the instrument."""
+        """Same as `quote_currency`."""
+
+        return self._profit_currency
+
+    @property
+    def quote_currency(self) -> str:
+        """Quote currency of this instrument."""
 
         return self._profit_currency
 
     @property
     def margin_currency(self) -> str:
-        """Margin currency of the instrument."""
+        """Margin currency of this instrument."""
 
         return self._margin_currency
 
@@ -85,7 +109,7 @@ class Instrument:
 
     @property
     def point(self) -> float:
-        """Smallest price of the instrument.
+        """Smallest price of this instrument.
         
         A point is the smallest price that an instrument may have. For instance, if an
         instrument has 3 digits after the decimal point, that instrument's point value
@@ -98,8 +122,36 @@ class Instrument:
         return self._point
 
     @property
+    def pip(self) -> float:
+        """Unit of measurement of a price change on this instrument.
+
+        Description
+        -----------
+        The standard way of quoting trading instruments is to 2 or 4 decimal places.
+        However, some brokers have more granularity for quotes on certain instruments,
+        such as Forex pairs, and provide quotes for them to 3 or 5 decimal places instead.
+        These are known as *3-digit brokers* and *5-digit brokers*, respectively.
+
+        For standard 2/4-digit brokers, a pip is same as a point, that is, both values
+        measure the smallest price of an instrument. Conversely, for 3/5-digit brokers,
+        a point is a tenth of a pip. For instance, the point and pip of EURUSD are both
+        0.0001 if that instrument is quoted by a 4-digit broker. On the other hand, if
+        quoted by a 5-digit broker, the point and pip of EURUSD is 0.00001 and 0.0001,
+        respectively.
+
+        In general, trading instruments on all types of brokers typically have 0, 2, 3,
+        4, or 5 decimal places. It's uncommon for a trading instrument to have 1 decimal
+        place or more than 5 decimal places. As such, this property assumes that if this
+        instrument has an odd number of decimal places, fractional pips are being quoted
+        and it will thus evaluate to 10 times a `point`. Otherwise, it evaluates to same
+        as a `point`.
+        """
+
+        return self.point * pow(10, self.decimal_places % 2)
+
+    @property
     def tick_size(self) -> float:
-        """Smallest possible price change of the instrument.
+        """Smallest possible price change on this instrument.
 
         A trading instrument has price movements of varying lengths, with its tick size
         defining the minimum amount that its price can move up or down on an exchange.
@@ -114,39 +166,75 @@ class Instrument:
 
         Usually, an instrument's tick size is same as its `point` value, but it not
         necessarily is. Some brokers, for instance, define different values of tick
-        sizes and point values for metal and index instruments.
+        sizes and point for metal and index instruments.
         
         In any case, an instrument's tick size is always a multiple of that instrument's
-        point value, and orders placed on the instrument must always be a multiple of its
-        tick size.
+        point, and orders placed on the instrument must always be a multiple of its tick
+        size.
         """
 
         return self._tick_size
 
     @property
     def contract_size(self) -> float:
-        """Number of base units that comprise 1 lot of the asset."""
+        """Number of units in `base_currency` that comprise 1 lot of the asset.
+        
+        For instance, if this instrument is EURUSD and `contract_size` is 100000, that
+        means filling an order with a lot size of 1 is equivalent to owning 100000 EUR.
+        """
 
         return self._contract_size
+
+    @property
+    def point_value(self) -> float:
+        """Value of a point in this instrument's quote currency."""
+
+        return self._contract_size * self.point
+
+    @property
+    def tick_value(self) -> float:
+        """Value of a tick in this instrument's quote currency.
+        
+        Description
+        -----------
+        `tick_value` measures how much one tick of this instrument is worth in its quote
+        currency.
+
+        For instance, if `tick_size` is 0.01, `tick_value` is 1, and `quote_currency` 
+        is USD, that means every movement of 0.01 on this instrument's price is worth
+        1 USD. Similarly, if `tick_size` is 0.05, `tick_value` is 100, and `quote_currency`
+        is JPY, that means every movement of 0.05 on this instrument's price is worth
+        100 JPY. In the former example, `point_value` is same as `tick_value`, whereas
+        in the latter, `point_value` is 5 times less than `tick_value`, that is, a move
+        of one point on this instrument is worth 20 JPY.
+        """
+
+        return self._contract_size * self._tick_size
+
+    @property
+    def pip_value(self) -> float:
+        """Value of a pip in this instrument's quote currency."""
+
+        return self._contract_size * self.pip
 
     @property
     def lot_step(self) -> float:
         """Smallest possible change in lot size.
         
-        Orders placed on the instrument must be a multiple of its lot step.
+        Orders placed on this instrument must be a multiple of its lot step.
         """
 
         return self._lot_step
 
     @property
     def min_lot(self) -> float:
-        """Minimum lot allowed to place an order on the instrument."""
+        """Minimum lot allowed to place an order on this instrument."""
 
         return self._min_lot
 
     @property
     def max_lot(self) -> float:
-        """Maximum lot allowed to place an order on the instrument."""
+        """Maximum lot allowed to place an order on this instrument."""
 
         return self._max_lot
 
@@ -164,18 +252,29 @@ class Instrument:
     
     @property
     def spread(self) -> int:
-        """Spread of the instrument for instruments with fixed spread.
+        """Spread of this instrument if it has fixed spread.
         
-        If the instrument has a floating spread, evaluates to 0. Otherwise,
-        evaluates to the instrument's spread.
+        If this instrument has a floating spread, evaluates to 0. Otherwise,
+        evaluates to this instrument's fixed spread.
         """
 
         return self._spread
 
     def is_floating_spread(self) -> bool:
-        """Returns whether the instrument has floating spread."""
+        """Returns whether this instrument has floating spread."""
 
         return self.spread == 0
 
-    def __repr__(self) -> str:
-        return pformat(vars(self), indent=4, width=1)
+    def normalize_price(self, price: float) -> float:
+        """Rounds `price` to this instrument's decimal places."""
+
+        return round(price, self.decimal_places)
+
+    def normalize_lots(self, lots: float) -> float:
+        """Rounds `lots` to a multiple of `lot_step` and clamps the result to range
+        [`min_lot`, `max_lot`].
+        """
+
+        lots = int(lots / self.lot_step) * self.lot_step
+
+        return max(min(lots, self.max_lot), self.min_lot)
