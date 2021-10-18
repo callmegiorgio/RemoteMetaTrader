@@ -8,7 +8,9 @@ class MyStrategy(rmt.Strategy):
 
         self._done = False
 
-    def on_tick(self, tick: rmt.Tick):
+        self.tick_received.connect(self._on_tick)
+
+    def _on_tick(self, tick: rmt.Tick):
         print(self.instrument.symbol, '-', tick)
 
         if self._done:

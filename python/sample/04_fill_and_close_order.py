@@ -7,8 +7,10 @@ class MyStrategy(rmt.Strategy):
         super().__init__(exchange, 'US100')
 
         self._done = False
+        
+        self.tick_received.connect(self._on_tick)
 
-    def on_tick(self, tick: rmt.Tick):
+    def _on_tick(self, tick: rmt.Tick):
         print(self.instrument.symbol, '-', tick)
 
         if self._done:
