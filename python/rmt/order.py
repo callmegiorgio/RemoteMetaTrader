@@ -4,10 +4,45 @@ from typing   import Optional
 from rmt      import SlottedClass
 
 class Side(IntEnum):
-    """Trade side or direction."""
+    """Trade side or direction.
+    
+    Description
+    -----------
+    The class `Side` indicates on which side of the market an order is: buy vs sell,
+    long vs short, bull vs bear, etc.
 
-    BUY   = 1
-    SELL  = -1
+    A `Side` object may also be used on side-independent calculations of prices.
+    For instance, consider the following code:
+    
+    ```
+    if side == Side.BUY and order.open_price() < 1000:
+        print('buy order opened at a price less than 1000')
+    elif side == Side.SELL and order.open_price() > 1000:
+        print('sell order opened at a price greater than 1000')    
+    ```
+
+    The same code can be written as a logic for the buy side, but which works for
+    both sides, by using multiplication instead of if-branches:
+
+    ```
+    if (order.open_price() * side) < (1000 * side):
+        print('order opened at a price [less than, if buy; greater than, if sell] 1000')
+    ```
+
+    In the above logic, if `side` is buy, the if-condition behaves the same way as
+    `order.open_price() < 1000`. If `side` is sell, however, the logic is evaluated
+    as `-order.open_price() < -1000`, which has the same effect of testing for
+    `order.open_price() > 1000`. The greater the value of open price is, the smaller
+    it is when multiplied by -1, and thus the behavior is the same as the buy case.
+
+    The multiplication style is less verbose and is supposed to be slightly faster,
+    since there are less conditions being tested, but may make code a little harder
+    to read at first sight. Hence this docstring. It's an idiomatic way of writing
+    side-independent code.
+    """
+
+    BUY  = 1
+    SELL = -1
 
     def __mul__(self, x: float) -> float:
         return self.value * x
