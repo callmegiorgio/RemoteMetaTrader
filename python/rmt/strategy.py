@@ -68,6 +68,8 @@ class Strategy(QObject):
         self._instrument = exchange.get_instrument(symbol)
 
         self._last_closed_bar_time: Optional[datetime] = None
+
+        self._last_tick: Optional[Tick] = None
         
         self._active_orders: Set[int] = set()
         self._history_orders: Set[int] = set()
@@ -102,6 +104,14 @@ class Strategy(QObject):
         orders = [self._exchange.get_order(ticket) for ticket in self._history_orders]
 
         return Performance(orders, 2)
+
+    def get_tick(self) -> Tick:
+        """Retrieves the last received tick on the strategy's instrument."""
+
+        if self._last_tick is None:
+            self._last_tick = self._exchange.get_tick(self.instrument.symbol)
+
+        return self._last_tick
 
     def get_instrument(self, symbol: str) -> Instrument:
         """Retrieves an instrument from the exchange which this strategy is running on."""
@@ -185,6 +195,8 @@ class Strategy(QObject):
     def _on_tick_received(self, symbol: str, tick: Tick):
         if symbol != self.instrument.symbol:
             return
+
+        self._last_tick = tick
 
         last_closed_bar_time = tick.server_time.replace(second=0) - timedelta(0, 60, 0)
 
