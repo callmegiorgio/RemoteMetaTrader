@@ -84,8 +84,6 @@ Server::Server(string shared_name)
 Server::~Server()
 {
     stop();
-    m_ctx.shutdown();
-    m_ctx.destroy(0);
 }
 
 bool Server::run(string protocol, string hostname, int rep_port, int push_port)
