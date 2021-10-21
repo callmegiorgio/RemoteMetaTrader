@@ -176,9 +176,9 @@ class MetaTrader4(Exchange):
             self._send_request(request)
         except MQL4Error as e:
             if e.code == CommandResultCode.UNKNOWN_SYMBOL:
-                raise rmt.error.InvalidSymbol(symbol)
+                raise rmt.error.InvalidSymbol(symbol) from None
             else:
-                raise e
+                raise e from None
 
         self._sub_socket.subscribe('tick.' + symbol)
         self._subscribed_symbols.add(symbol)
@@ -254,16 +254,16 @@ class MetaTrader4(Exchange):
             response_content = self._send_request(request)
         except MQL4Error as e:
             if e.code == CommandResultCode.UNKNOWN_SYMBOL:
-                raise rmt.error.InvalidSymbol(symbol)
+                raise rmt.error.InvalidSymbol(symbol) from None
 
             elif e.code == CommandResultCode.OFF_QUOTES:
-                raise rmt.error.OffQuotes(symbol, side, order_type)
+                raise rmt.error.OffQuotes(symbol, side, order_type) from None
 
             elif e.code == CommandResultCode.REQUOTE:
-                raise rmt.error.Requote(symbol, price)
+                raise rmt.error.Requote(symbol, price) from None
 
             else:
-                raise e
+                raise e from None
 
         response = responses.PlaceOrderResponse(response_content)
 
@@ -347,9 +347,9 @@ class MetaTrader4(Exchange):
             self._send_request(request)
         except MQL4Error as e:
             if e.code == CommandResultCode.INVALID_TICKET:
-                raise rmt.error.InvalidTicket(ticket)
+                raise rmt.error.InvalidTicket(ticket) from None
             else:
-                raise e
+                raise e from None
 
         try:
             order = self._orders[ticket]
@@ -379,9 +379,9 @@ class MetaTrader4(Exchange):
             self._send_request(request)
         except MQL4Error as e:
             if e.code == CommandResultCode.INVALID_TICKET:
-                raise rmt.error.InvalidTicket(ticket)
+                raise rmt.error.InvalidTicket(ticket) from None
             else:
-                raise e
+                raise e from None
 
         try:
             order = self._orders[ticket]
@@ -405,9 +405,9 @@ class MetaTrader4(Exchange):
             response_content = self._send_request(request)
         except MQL4Error as e:
             if e.code == CommandResultCode.INVALID_TICKET:
-                raise rmt.error.InvalidTicket(ticket)
+                raise rmt.error.InvalidTicket(ticket) from None
             else:
-                raise e
+                raise e from None
 
         response = responses.CloseOrderResponse(response_content)
 
@@ -470,9 +470,9 @@ class MetaTrader4(Exchange):
             response_content = self._send_request(request)
         except MQL4Error as e:
             if e.code == CommandResultCode.INVALID_TICKET:
-                raise rmt.error.InvalidTicket(ticket)
+                raise rmt.error.InvalidTicket(ticket) from None
             else:
-                raise e
+                raise e from None
 
         response = responses.GetOrderResponse(response_content)
 
@@ -488,9 +488,9 @@ class MetaTrader4(Exchange):
             return response.rate()
         except MQL4Error as e:
             if e.code == CommandResultCode.EXCHANGE_RATE_FAILED:
-                raise rmt.error.ExchangeRateError(base_currency, quote_currency)
+                raise rmt.error.ExchangeRateError(base_currency, quote_currency) from None
             else:
-                raise e
+                raise e from None
 
     def process_events(self):
         while True:
@@ -551,7 +551,7 @@ class MetaTrader4(Exchange):
             content      = json.dumps(request.content())
             request: str = '%s %s' % (cmd, content)            
         except (rmt.error.NotImplementedException, ValueError) as e:
-            raise rmt.error.RequestError('failed to serialize JSON request: %s' % e)
+            raise rmt.error.RequestError('failed to serialize JSON request: %s' % e) from None
 
         response: str = ''
 
@@ -564,7 +564,7 @@ class MetaTrader4(Exchange):
 
         except zmq.error.Again:
             sleep(0.000000001)
-            raise rmt.error.RequestTimeout()
+            raise rmt.error.RequestTimeout() from None
 
         cmd_result = None
         content    = None
@@ -572,7 +572,7 @@ class MetaTrader4(Exchange):
         try:
             cmd_result, content = self._parse_response(response)
         except ValueError as e:
-            raise rmt.error.RequestError('parsing of response message failed: %s' % e)
+            raise rmt.error.RequestError('parsing of response message failed: %s' % e) from None
 
         if content is None:
             content = {}
@@ -603,8 +603,8 @@ class MetaTrader4(Exchange):
 
         try:
             content = msg[(content_index + 1):]
-        except:
-            raise ValueError("missing content from event message '%s'" % msg)
+        except IndexError:
+            raise ValueError("missing content from event message '%s'" % msg) from None
 
         content    = json.loads(content)
         event_name = msg[:content_index]
