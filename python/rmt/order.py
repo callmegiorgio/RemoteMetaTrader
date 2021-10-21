@@ -1,7 +1,8 @@
-from datetime import datetime, timedelta, timezone
-from enum     import IntEnum
-from typing   import Optional
-from rmt      import SlottedClass
+from __future__ import annotations
+from datetime   import datetime, timedelta, timezone
+from enum       import IntEnum
+from typing     import Optional
+from rmt        import SlottedClass
 
 class Side(IntEnum):
     """Trade side or direction.
@@ -43,6 +44,11 @@ class Side(IntEnum):
 
     BUY  = 1
     SELL = -1
+
+    def reverse(self) -> Side:
+        """Returns the reverse of this side."""
+
+        return Side(self.value * -1)
 
     def __mul__(self, x: float) -> float:
         return self.value * x
@@ -109,23 +115,23 @@ class Order(SlottedClass):
                  profit:       float = 0.0,
                  swap:         float = 0.0
     ):
-        self._symbol       = symbol
-        self._side         = side
-        self._type         = type
-        self._lots         = lots
-        self._status       = status
-        self._open_price   = open_price
+        self._symbol       = str(symbol)
+        self._side         = Side(side)
+        self._type         = OrderType(type)
+        self._lots         = float(lots)
+        self._status       = OrderStatus(status)
+        self._open_price   = float(open_price)
         self._open_time    = open_time
-        self._close_price  = close_price
+        self._close_price  = None if close_price is None else float(close_price)
         self._close_time   = close_time
-        self._stop_loss    = stop_loss
-        self._take_profit  = take_profit
+        self._stop_loss    = None if stop_loss is None else float(stop_loss)
+        self._take_profit  = None if take_profit is None else float(take_profit)
         self._expiration   = expiration
-        self._magic_number = magic_number
-        self._comment      = comment
-        self._commission   = commission
-        self._profit       = profit
-        self._swap         = swap
+        self._magic_number = int(magic_number)
+        self._comment      = str(comment)
+        self._commission   = float(commission)
+        self._profit       = float(profit)
+        self._swap         = float(swap)
 
     def symbol(self) -> str:
         return self._symbol
@@ -185,7 +191,9 @@ class Order(SlottedClass):
         return self._side == Side.SELL
 
     def duration(self) -> timedelta:
-        if self.close_time() > self.open_time():
-            return self.close_time() - self.open_time()
-        else:
-            return datetime.now(timezone.utc) - self.open_time()
+        last_time = self.close_time()
+
+        if last_time is None:
+            last_time = datetime.now(timezone.utc)
+
+        return last_time - self.open_time()            
