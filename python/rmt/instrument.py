@@ -276,5 +276,6 @@ class Instrument(SlottedClass):
         """
 
         lots = int(lots / self.lot_step) * self.lot_step
+        lots = round(lots, 8)
 
         return max(min(lots, self.max_lot), self.min_lot)
