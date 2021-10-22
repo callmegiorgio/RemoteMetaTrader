@@ -1,4 +1,4 @@
-#property version "0.3.2"
+#property version "0.3.3"
 #property strict
 
 #include "../Include/RMT/Command/RequestProcessor.mqh"

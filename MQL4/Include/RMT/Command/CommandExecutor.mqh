@@ -121,16 +121,10 @@ CommandResult CommandExecutor::execute(const GetInstrumentRequest& request, GetI
 
 CommandResult CommandExecutor::execute(const GetBarRequest& request, GetBarResponse& response) override
 {
-    ResetLastError();
+    if (!Bar::at(request.symbol, request.timeframe, request.index, response.bar))
+        return GetLastError();
 
-    response.time   = iTime  (request.symbol, request.timeframe, request.index);
-    response.open   = iOpen  (request.symbol, request.timeframe, request.index);
-    response.high   = iHigh  (request.symbol, request.timeframe, request.index);
-    response.low    = iLow   (request.symbol, request.timeframe, request.index);
-    response.close  = iClose (request.symbol, request.timeframe, request.index);
-    response.volume = iVolume(request.symbol, request.timeframe, request.index);
-
-    return GetLastError();
+    return CommandResult::SUCCESS;
 }
 
 CommandResult CommandExecutor::execute(const GetHistoryBarsRequest& request, GetHistoryBarsResponse& response) override
