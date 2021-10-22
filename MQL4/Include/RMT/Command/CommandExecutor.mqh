@@ -135,24 +135,8 @@ CommandResult CommandExecutor::execute(const GetBarRequest& request, GetBarRespo
 
 CommandResult CommandExecutor::execute(const GetHistoryBarsRequest& request, GetHistoryBarsResponse& response) override
 {
-    const datetime start_time = request.start_time.value_or(0);
-    datetime end_time;
-
-    if (!request.end_time.get(end_time))
-    {
-        // According to the MQL4 documentation, this is the last valid date
-        // for `datetime`.
-        // TODO: move this to a function of its own?
-        MqlDateTime dt;
-        dt.year = 3000;
-        dt.mon  = 12;
-        dt.day  = 31;
-        dt.hour = 00;
-        dt.min  = 00;
-        dt.sec  = 00;
-
-        end_time = StructToTime(dt);
-    }
+    const datetime start_time = request.start_time.value_or(DateTime::min().timestamp());
+    const datetime end_time   = request.end_time.value_or(DateTime::max().timestamp());
 
     response.rates_count =
         CopyRates(
