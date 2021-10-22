@@ -7,7 +7,8 @@ class Tick {
 public:
     static bool current(string symbol, Tick& tick);
 
-    Tick(datetime server_time = 0, double bid = 0, double ask = 0);
+    Tick();
+    Tick(datetime server_time, double bid, double ask);
     Tick(const Tick& other);
 
     datetime server_time() const;
@@ -92,6 +93,13 @@ static bool Tick::current(string symbol, Tick& tick)
     }
 
     return true;
+}
+
+Tick::Tick()
+{
+    m_server_time = 0;
+    m_bid         = 0;
+    m_ask         = 0;
 }
 
 Tick::Tick(datetime server_time, double bid, double ask)

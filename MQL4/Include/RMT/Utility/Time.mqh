@@ -4,7 +4,8 @@ class Time {
 public:
     static Time now();
 
-    Time(uint hour = 0, uint minute = 0, uint second = 0);
+    Time();
+    Time(uint hour, uint minute, uint second);
     Time(const Time& other);
 
     uint hour() const;
@@ -37,6 +38,11 @@ static Time Time::now()
         uint(Minute()),
         uint(Seconds())
     );
+}
+
+Time::Time()
+{
+    m_seconds = 0;
 }
 
 Time::Time(uint hour, uint minute, uint second)
