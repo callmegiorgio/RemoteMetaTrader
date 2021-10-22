@@ -11,12 +11,15 @@
 #include "BarClosedEvent.mqh"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Notifies receipt of quotes for subscribed instruments.
+/// Notifies quotes receipt and closing of bars for subscribed instruments.
 ///
-/// The class `InstrumentEventSubject` allows subscription to instruments available in
-/// the trade server. For each subscribed instrument, a call to `update()` will
-/// verify if that instrument has a new quote, and if yes, the new quote will be
-/// delivered to registered observers as a `TickEvent`.
+/// The class `InstrumentEventSubject` allows subscription to instruments 
+/// available in the trade server. For each subscribed instrument, a call to
+/// `update()` will verify if that instrument has a new quote, and if yes, the
+/// new quote will be delivered to registered observers as a `TickEvent`. If
+/// the new quote occurs at a new M1 bar, the previous closed bar is delivered
+/// to registered observers as a `BarClosedEvent` immediately before the tick
+/// event is sent.
 ///
 ////////////////////////////////////////////////////////////////////////////////
 class InstrumentEventSubject {
