@@ -4,7 +4,7 @@ from rmt      import jsonutil, Side, Order, OrderType, OrderStatus
 from ..       import Content, OperationCode
 
 class GetOrderResponse:
-    def __init__(self, content: Content):
+    def __init__(self, ticket: int, content: Content):
         opcode       = self._read_opcode(content)
         status       = self._read_status(content)
         symbol       = jsonutil.read_required(content, 'symbol',     str)
@@ -36,6 +36,7 @@ class GetOrderResponse:
             order_type = OrderType.STOP_ORDER
 
         self._order = Order(
+            ticket       = ticket,
             symbol       = symbol,
             side         = side,
             type         = order_type,

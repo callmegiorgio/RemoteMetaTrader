@@ -77,6 +77,7 @@ class Order(SlottedClass):
     """Stores information about an order."""
 
     __slots__ = [
+        '_ticket',
         '_symbol',
         '_side',
         '_type',
@@ -97,6 +98,7 @@ class Order(SlottedClass):
     ]
 
     def __init__(self,
+                 ticket:       int,
                  symbol:       str,
                  side:         Side,
                  type:         OrderType,
@@ -115,6 +117,7 @@ class Order(SlottedClass):
                  profit:       float = 0.0,
                  swap:         float = 0.0
     ):
+        self._ticket       = int(ticket)
         self._symbol       = str(symbol)
         self._side         = Side(side)
         self._type         = OrderType(type)
@@ -132,6 +135,9 @@ class Order(SlottedClass):
         self._commission   = float(commission)
         self._profit       = float(profit)
         self._swap         = float(swap)
+
+    def ticket(self) -> int:
+        return self._ticket
 
     def symbol(self) -> str:
         return self._symbol

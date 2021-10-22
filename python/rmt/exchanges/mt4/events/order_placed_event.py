@@ -8,8 +8,6 @@ class OrderPlacedEvent(Event):
         if not isinstance(content, dict):
             raise ValueError("order event content is of invalid type (expected: object, got: array)")
 
-        self._ticket = jsonutil.read_required(content, 'ticket', int)
-
         opcode = jsonutil.read_required(content, 'opcode', int)
         opcode = OperationCode(opcode)
 
@@ -33,6 +31,7 @@ class OrderPlacedEvent(Event):
             status     = OrderStatus.PENDING
         
         self._order = Order(
+            ticket       = jsonutil.read_required(content, 'ticket', int),
             symbol       = jsonutil.read_required(content, 'symbol', str),
             side         = side,
             type         = order_type,
@@ -49,9 +48,6 @@ class OrderPlacedEvent(Event):
             profit       = jsonutil.read_required(content, 'profit',     float),
             swap         = jsonutil.read_required(content, 'swap',       float)
         )
-
-    def ticket(self) -> int:
-        return self._ticket
 
     def order(self) -> Order:
         return self._order

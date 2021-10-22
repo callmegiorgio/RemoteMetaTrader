@@ -270,6 +270,8 @@ class MetaTrader4(Exchange):
         order_info = response.order_info()
         order = None
 
+        ticket = response.ticket()
+
         ################################################################################
         # Add order to list of tracked orders if the response also contains information
         # about the order.
@@ -299,6 +301,7 @@ class MetaTrader4(Exchange):
                 status = OrderStatus.PENDING
 
             order = Order(
+                ticket       = ticket,
                 symbol       = symbol,
                 side         = side,
                 type         = order_type,
@@ -317,8 +320,6 @@ class MetaTrader4(Exchange):
                 profit       = order_info.profit(),
                 swap         = order_info.swap(),
             )
-
-        ticket = response.ticket()
 
         self._orders[ticket] = order
 
@@ -433,6 +434,7 @@ class MetaTrader4(Exchange):
             ticket = new_order.ticket()
 
             order = Order(
+                ticket       = ticket,
                 symbol       = order.symbol(),
                 side         = order.side(),
                 type         = order.type(),
@@ -474,7 +476,7 @@ class MetaTrader4(Exchange):
             else:
                 raise e from None
 
-        response = responses.GetOrderResponse(response_content)
+        response = responses.GetOrderResponse(ticket, response_content)
 
         self._orders[ticket] = response.order()
 
@@ -618,8 +620,8 @@ class MetaTrader4(Exchange):
         self.tick_received.emit(event.symbol(), event.tick())
 
     def _on_order_placed_event(self, event: events.OrderPlacedEvent):
-        ticket      = event.ticket()
         event_order = event.order()
+        ticket      = event_order.ticket()
 
         tracked_order = None
 
