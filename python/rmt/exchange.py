@@ -18,6 +18,14 @@ class Exchange(QObject):
     you may instead call `get_tick()`.
     """
 
+    bar_closed = pyqtSignal(str, Bar)
+    """Event emitted when an M1 bar of an instrument is closed.
+    
+    This event is emitted by `process_events()` when an M1 bar of a subscribed
+    instrument is closed. The parameters passed in are the instrument's symbol
+    and its closed bar.
+    """
+
     order_opened = pyqtSignal(int)
     """Event emitted when a limit order or a stop order is opened.
 

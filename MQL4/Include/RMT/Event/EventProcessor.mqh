@@ -1,13 +1,14 @@
 #property strict
 
 // Local
+#include "BarClosedEventPublisher.mqh"
+#include "InstrumentEventSubject.mqh"
 #include "OrderEventSubject.mqh"
 #include "OrderFinishedEventPublisher.mqh"
 #include "OrderModifiedEventPublisher.mqh"
 #include "OrderPlacedEventPublisher.mqh"
 #include "OrderUpdatedEventPublisher.mqh"
 #include "TickEventPublisher.mqh"
-#include "TickEventSubject.mqh"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Updates event subjects.
@@ -26,12 +27,12 @@ public:
 
     void process_events();
 
-    TickEventSubject* tick_event_subject();
+    InstrumentEventSubject* instrument_event_subject();
     OrderEventSubject* order_event_subject();
 
 private:
-    TickEventSubject  m_tick_ev_sub;
-    OrderEventSubject m_order_ev_sub;
+    InstrumentEventSubject m_instrument_ev_sub;
+    OrderEventSubject      m_order_ev_sub;
 };
 
 //===========================================================================
@@ -39,7 +40,8 @@ private:
 //===========================================================================
 EventProcessor::EventProcessor(Server& the_server)
 {
-    m_tick_ev_sub.register(new TickEventPublisher(the_server));
+    m_instrument_ev_sub.register(new TickEventPublisher(the_server));
+    m_instrument_ev_sub.register(new BarClosedEventPublisher(the_server));
     m_order_ev_sub.register(new OrderPlacedEventPublisher(the_server));
     m_order_ev_sub.register(new OrderFinishedEventPublisher(the_server));
     m_order_ev_sub.register(new OrderModifiedEventPublisher(the_server));
@@ -48,13 +50,13 @@ EventProcessor::EventProcessor(Server& the_server)
 
 void EventProcessor::process_events()
 {
-    m_tick_ev_sub.update();
+    m_instrument_ev_sub.update();
     m_order_ev_sub.update();
 }
 
-TickEventSubject* EventProcessor::tick_event_subject()
+InstrumentEventSubject* EventProcessor::instrument_event_subject()
 {
-    return GetPointer(m_tick_ev_sub);
+    return GetPointer(m_instrument_ev_sub);
 }
 
 OrderEventSubject* EventProcessor::order_event_subject()

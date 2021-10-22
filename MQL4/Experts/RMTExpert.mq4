@@ -1,4 +1,4 @@
-#property version "0.3.3"
+#property version "0.4.0"
 #property strict
 
 #include "../Include/RMT/Command/RequestProcessor.mqh"
@@ -32,7 +32,7 @@ const Time testing_stop_time(STOP_HOUR, STOP_MINUTE, STOP_SECOND);
 
 Server              server;
 EventProcessor      event_processor(server);
-RequestProcessor    request_processor(server, event_processor.tick_event_subject());
+RequestProcessor    request_processor(server, event_processor.instrument_event_subject());
 
 // Branches out `OnTick()` logic to different functions, depending on whether
 // the Expert is run by Strategy Tester or not.

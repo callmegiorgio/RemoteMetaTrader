@@ -5,23 +5,27 @@
 
 // Local
 #include "../Trading/Tick.mqh"
+#include "../Utility/DateTime.mqh"
 #include "../Utility/Observer.mqh"
 #include "TickEvent.mqh"
+#include "BarClosedEvent.mqh"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Notifies receipt of quotes for subscribed instruments.
 ///
-/// The class `TickEventSubject` allows subscription to instruments available in
+/// The class `InstrumentEventSubject` allows subscription to instruments available in
 /// the trade server. For each subscribed instrument, a call to `update()` will
 /// verify if that instrument has a new quote, and if yes, the new quote will be
 /// delivered to registered observers as a `TickEvent`.
 ///
 ////////////////////////////////////////////////////////////////////////////////
-/// Stores symbols which a client is subscribed to.
-class TickEventSubject : public Subject<TickEvent> {
+class InstrumentEventSubject {
 public:
-    TickEventSubject();
-    ~TickEventSubject();
+    InstrumentEventSubject();
+    ~InstrumentEventSubject();
+
+    void register(Observer<TickEvent>* observer);
+    void register(Observer<BarClosedEvent>* observer);
 
     void subscribe(string symbol);
     void unsubscribe(string symbol);
@@ -36,20 +40,33 @@ public:
 
 private:
     HashMap<string, Tick*> m_ticks;
+
+    Subject<TickEvent>      m_tick_ev_sub;
+    Subject<BarClosedEvent> m_bar_closed_ev_sub;
 };
 
 //===========================================================================
-// --- TickEventSubject implementation ---
+// --- InstrumentEventSubject implementation ---
 //===========================================================================
-TickEventSubject::TickEventSubject()
+InstrumentEventSubject::InstrumentEventSubject()
 {}
 
-TickEventSubject::~TickEventSubject()
+InstrumentEventSubject::~InstrumentEventSubject()
 {
     unsubscribe_all();
 }
 
-void TickEventSubject::subscribe(string symbol)
+void InstrumentEventSubject::register(Observer<TickEvent>* observer)
+{
+    m_tick_ev_sub.register(observer);
+}
+
+void InstrumentEventSubject::register(Observer<BarClosedEvent>* observer)
+{
+    m_bar_closed_ev_sub.register(observer);
+}
+
+void InstrumentEventSubject::subscribe(string symbol)
 {
     Tick* tick = m_ticks.get(symbol, NULL);
 
@@ -57,7 +74,7 @@ void TickEventSubject::subscribe(string symbol)
         m_ticks.set(symbol, new Tick);
 }
 
-void TickEventSubject::unsubscribe(string symbol)
+void InstrumentEventSubject::unsubscribe(string symbol)
 {
     Tick* tick = m_ticks.get(symbol, NULL);
 
@@ -68,7 +85,7 @@ void TickEventSubject::unsubscribe(string symbol)
     }
 }
 
-void TickEventSubject::subscribe_all()
+void InstrumentEventSubject::subscribe_all()
 {
     const int n = SymbolsTotal(false);
                 
@@ -76,7 +93,7 @@ void TickEventSubject::subscribe_all()
         subscribe(SymbolName(i, false));
 }
 
-void TickEventSubject::unsubscribe_all()
+void InstrumentEventSubject::unsubscribe_all()
 {
     foreachm(string, symbol, Tick*, tick, m_ticks)
         delete tick;
@@ -84,17 +101,17 @@ void TickEventSubject::unsubscribe_all()
     m_ticks.clear();
 }
 
-int TickEventSubject::count() const
+int InstrumentEventSubject::count() const
 {
     return m_ticks.size();
 }
 
-bool TickEventSubject::is_subscribed(string symbol) const
+bool InstrumentEventSubject::is_subscribed(string symbol) const
 {
     return m_ticks.contains(symbol);
 }
 
-void TickEventSubject::update()
+void InstrumentEventSubject::update()
 {
     Tick last_tick;
     
@@ -105,13 +122,25 @@ void TickEventSubject::update()
 
         if (tick.bid() == last_tick.bid() && tick.ask() == last_tick.ask())
             continue;
+        
+        const DateTime current_tick_time = tick.server_time();
+        const DateTime previous_tick_time = last_tick.server_time();
 
         tick = last_tick;
-        
-        TickEvent ev;
-        ev.symbol = symbol;
-        ev.tick   = last_tick;
 
-        notify(ev);
+        if (current_tick_time.minute() != previous_tick_time.minute())
+        {
+            BarClosedEvent bar_closed_ev;
+            bar_closed_ev.symbol = symbol;
+            
+            if (Bar::at(symbol, PERIOD_M1, 1, bar_closed_ev.bar))
+                m_bar_closed_ev_sub.notify(bar_closed_ev);
+        }
+
+        TickEvent tick_ev;
+        tick_ev.symbol = symbol;
+        tick_ev.tick   = last_tick;
+
+        m_tick_ev_sub.notify(tick_ev);
     }
 }

@@ -4,7 +4,7 @@
 #include <Mql/Collection/HashSet.mqh>
 
 // Local
-#include "../Event/TickEventSubject.mqh"
+#include "../Event/InstrumentEventSubject.mqh"
 #include "../Trading/get_exchange_rate.mqh"
 #include "../Trading/Tick.mqh"
 #include "CommandDispatcher.mqh"
@@ -12,7 +12,7 @@
 /// Implements the business logic interfaced by `CommandDispatcher`.
 class CommandExecutor : public CommandDispatcher {
 public:
-    CommandExecutor(TickEventSubject& tick_event_subject);
+    CommandExecutor(InstrumentEventSubject& instrument_event_subject);
 
 private:
     CommandResult execute(GetAccountResponse& response) override;
@@ -30,15 +30,15 @@ private:
     CommandResult execute(const PlaceOrderRequest&      request, PlaceOrderResponse&      response) override;
     CommandResult execute(const CloseOrderRequest&      request, CloseOrderResponse&      response) override;
 
-    TickEventSubject* m_tick_ev_sub;
+    InstrumentEventSubject* m_instrument_ev_sub;
 };
 
 //===========================================================================
 // --- CommandExecutor implementation ---
 //===========================================================================
-CommandExecutor::CommandExecutor(TickEventSubject& tick_event_subject)
+CommandExecutor::CommandExecutor(InstrumentEventSubject& instrument_event_subject)
 {
-    m_tick_ev_sub = GetPointer(tick_event_subject);
+    m_instrument_ev_sub = GetPointer(instrument_event_subject);
 }
 
 CommandResult CommandExecutor::execute(GetAccountResponse& response) override
@@ -66,7 +66,7 @@ CommandResult CommandExecutor::execute(GetAccountResponse& response) override
 
 CommandResult CommandExecutor::execute(const WatchSymbolRequest& request) override
 {
-    m_tick_ev_sub.subscribe(request.symbol);
+    m_instrument_ev_sub.subscribe(request.symbol);
 
     return CommandResult::SUCCESS;
 }

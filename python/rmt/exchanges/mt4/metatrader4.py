@@ -78,6 +78,7 @@ class MetaTrader4(Exchange):
 
         self._event_dispatcher = events.Dispatcher()
         self._event_dispatcher.register('tick',          events.TickEvent,          self._on_tick_event)
+        self._event_dispatcher.register('bar',           events.BarClosedEvent,     self._on_bar_closed_event)
         self._event_dispatcher.register('orderPlaced',   events.OrderPlacedEvent,   self._on_order_placed_event)
         self._event_dispatcher.register('orderFinished', events.OrderFinishedEvent, self._on_order_finished_event)
         self._event_dispatcher.register('orderModified', events.OrderModifiedEvent, self._on_order_modified_event)
@@ -180,7 +181,7 @@ class MetaTrader4(Exchange):
             else:
                 raise e from None
 
-        self._sub_socket.subscribe('tick.' + symbol)
+        self._subscribe_instrument_event(symbol)
         self._subscribed_symbols.add(symbol)
 
     def subscribe_all(self):
@@ -189,17 +190,17 @@ class MetaTrader4(Exchange):
         
         for symbol in response.symbols():
             if isinstance(symbol, str):
-                self._sub_socket.subscribe('tick.' + symbol)
+                self._subscribe_instrument_event(symbol)
                 self._subscribed_symbols.add(symbol)
 
     def unsubscribe(self, symbol: str):
         if symbol in self._subscribed_symbols:
-            self._sub_socket.unsubscribe('tick.' + symbol)
+            self._unsubscribe_instrument_event(symbol)
             self._subscribed_symbols.remove(symbol)
 
     def unsubscribe_all(self):
         for symbol in self._subscribed_symbols:
-            self._sub_socket.unsubscribe('tick' + symbol)
+            self._unsubscribe_instrument_event(symbol)
         
         self._subscribed_symbols.clear()
 
@@ -515,6 +516,14 @@ class MetaTrader4(Exchange):
         response = responses.GetAccountResponse(self._send_request(request))
 
         return response.account()
+    
+    def _subscribe_instrument_event(self, symbol: str):
+        self._sub_socket.subscribe('tick.' + symbol)
+        self._sub_socket.subscribe('bar.' + symbol)
+
+    def _unsubscribe_instrument_event(self, symbol: str):
+        self._sub_socket.unsubscribe('tick.' + symbol)
+        self._sub_socket.unsubscribe('bar.' + symbol)
 
     def _parse_response(self, response: str) -> Tuple[CommandResultCode, Optional[Content]]:
         sep_index  = response.find(' ')
@@ -618,6 +627,9 @@ class MetaTrader4(Exchange):
 
     def _on_tick_event(self, event: events.TickEvent):
         self.tick_received.emit(event.symbol(), event.tick())
+
+    def _on_bar_closed_event(self, event: events.BarClosedEvent):
+        self.bar_closed.emit(event.symbol(), event.bar())
 
     def _on_order_placed_event(self, event: events.OrderPlacedEvent):
         event_order = event.order()

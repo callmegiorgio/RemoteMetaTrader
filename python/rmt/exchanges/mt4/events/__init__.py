@@ -1,5 +1,6 @@
 from .event                import Event
 from .tick_event           import TickEvent
+from .bar_closed_event     import BarClosedEvent
 from .order_placed_event   import OrderPlacedEvent
 from .order_modified_event import OrderModifiedEvent
 from .order_finished_event import OrderFinishedEvent

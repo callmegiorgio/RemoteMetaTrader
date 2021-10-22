@@ -74,13 +74,14 @@ class Strategy(QObject):
         self._active_orders: Set[int] = set()
         self._history_orders: Set[int] = set()
 
-        self._exchange.tick_received.connect(self._on_tick_received)
-        self._exchange.order_opened.connect(self._on_order_opened)
-        self._exchange.order_expired.connect(self._on_order_expired)
-        self._exchange.order_canceled.connect(self._on_order_canceled)
-        self._exchange.order_modified.connect(self._on_order_modified)
-        self._exchange.order_filled.connect(self._on_order_filled)
-        self._exchange.order_closed.connect(self._on_order_closed)
+        self._exchange.tick_received.connect(self._notify_tick_received)
+        self._exchange.bar_closed.connect(self._notify_bar_closed)
+        self._exchange.order_opened.connect(self._notify_order_opened)
+        self._exchange.order_expired.connect(self._notify_order_expired)
+        self._exchange.order_canceled.connect(self._notify_order_canceled)
+        self._exchange.order_modified.connect(self._notify_order_modified)
+        self._exchange.order_filled.connect(self._notify_order_filled)
+        self._exchange.order_closed.connect(self._notify_order_closed)
 
     @property
     def instrument(self) -> Instrument:
@@ -192,35 +193,30 @@ class Strategy(QObject):
     # Internals
     #===============================================================================
     @pyqtSlot(str, Tick)
-    def _on_tick_received(self, symbol: str, tick: Tick):
+    def _notify_tick_received(self, symbol: str, tick: Tick):
         if symbol != self.instrument.symbol:
             return
 
         self._last_tick = tick
 
-        last_closed_bar_time = tick.server_time.replace(second=0) - timedelta(0, 60, 0)
-
-        if self._last_closed_bar_time is None:
-            self._last_closed_bar_time = last_closed_bar_time
-        elif self._last_closed_bar_time != last_closed_bar_time:
-            self._last_closed_bar_time = last_closed_bar_time
-
-            closed_bar = self._exchange.get_history_bar(symbol, last_closed_bar_time)
-
-            if closed_bar is not None:
-                self.bar_closed.emit(closed_bar)
-
         self.tick_received.emit(tick)
 
+    @pyqtSlot(str, Bar)
+    def _notify_bar_closed(self, symbol: str, bar: Bar):
+        if symbol != self.instrument.symbol:
+            return
+
+        self.bar_closed.emit(bar)
+
     @pyqtSlot(int)
-    def _on_order_opened(self, ticket: int):
+    def _notify_order_opened(self, ticket: int):
         if ticket in self._active_orders:
             self._active_orders.add(ticket)
 
             self.order_opened.emit(ticket)
 
     @pyqtSlot(int)
-    def _on_order_canceled(self, ticket: int):
+    def _notify_order_canceled(self, ticket: int):
         if ticket in self._active_orders:
             self._active_orders.remove(ticket)
             self._history_orders.add(ticket)
@@ -228,7 +224,7 @@ class Strategy(QObject):
             self.order_canceled.emit(ticket)
 
     @pyqtSlot(int)
-    def _on_order_expired(self, ticket: int):
+    def _notify_order_expired(self, ticket: int):
         if ticket in self._active_orders:
             self._active_orders.remove(ticket)
             self._history_orders.add(ticket)
@@ -236,17 +232,17 @@ class Strategy(QObject):
             self.order_expired.emit(ticket)
 
     @pyqtSlot(int)
-    def _on_order_modified(self, ticket: int):
+    def _notify_order_modified(self, ticket: int):
         if ticket in self._active_orders:
             self.order_modified.emit(ticket)
 
     @pyqtSlot(int)
-    def _on_order_filled(self, ticket: int):
+    def _notify_order_filled(self, ticket: int):
         if ticket in self._active_orders:
             self.order_filled.emit(ticket)
 
     @pyqtSlot(int)
-    def _on_order_closed(self, ticket: int):
+    def _notify_order_closed(self, ticket: int):
         if ticket in self._active_orders:
             self._active_orders.remove(ticket)
             self._history_orders.add(ticket)
