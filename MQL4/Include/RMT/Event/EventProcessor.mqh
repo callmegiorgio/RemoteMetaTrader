@@ -1,7 +1,10 @@
 #property strict
 
 // Local
+#include "AccountEventSubject.mqh"
+#include "AccountChangedEventPublisher.mqh"
 #include "BarClosedEventPublisher.mqh"
+#include "EquityUpdatedEventPublisher.mqh"
 #include "InstrumentEventSubject.mqh"
 #include "OrderEventSubject.mqh"
 #include "OrderFinishedEventPublisher.mqh"
@@ -27,10 +30,12 @@ public:
 
     void process_events();
 
+    AccountEventSubject* account_event_subject();
     InstrumentEventSubject* instrument_event_subject();
     OrderEventSubject* order_event_subject();
 
 private:
+    AccountEventSubject    m_account_ev_sub;
     InstrumentEventSubject m_instrument_ev_sub;
     OrderEventSubject      m_order_ev_sub;
 };
@@ -40,6 +45,8 @@ private:
 //===========================================================================
 EventProcessor::EventProcessor(Server& the_server)
 {
+    m_account_ev_sub.register(new AccountChangedEventPublisher(the_server));
+    m_account_ev_sub.register(new EquityUpdatedEventPublisher(the_server));
     m_instrument_ev_sub.register(new TickEventPublisher(the_server));
     m_instrument_ev_sub.register(new BarClosedEventPublisher(the_server));
     m_order_ev_sub.register(new OrderPlacedEventPublisher(the_server));
@@ -52,6 +59,12 @@ void EventProcessor::process_events()
 {
     m_instrument_ev_sub.update();
     m_order_ev_sub.update();
+    m_account_ev_sub.update();
+}
+
+AccountEventSubject* EventProcessor::account_event_subject()
+{
+    return GetPointer(m_account_ev_sub);
 }
 
 InstrumentEventSubject* EventProcessor::instrument_event_subject()

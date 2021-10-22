@@ -135,6 +135,16 @@ class Exchange(QObject):
     is also not emitted for that order.
     """
 
+    account_updated = pyqtSignal(Account)
+    """Event emitted when a property of the connected account is changed.
+    
+    This event is emitted by `process_events()` if a property of the `Exchange.account`
+    object is changed. In particular, this happens when an equity-related property
+    such as `Account.equity` and `Account.balance` is changed.
+
+    The parameter passed in is the object `self.account`.
+    """
+
     def __init__(self):
         super().__init__()
 

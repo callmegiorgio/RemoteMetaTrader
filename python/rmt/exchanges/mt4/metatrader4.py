@@ -57,6 +57,18 @@ class MetaTrader4(Exchange):
         self._sub_socket.subscribe('orderFinished')
         self._sub_socket.subscribe('orderModified')
         self._sub_socket.subscribe('orderUpdated')
+        self._sub_socket.subscribe('accountChanged')
+        self._sub_socket.subscribe('equityUpdated')
+
+        self._event_dispatcher = events.Dispatcher()
+        self._event_dispatcher.register('tick',           events.TickEvent,           self._on_tick_event)
+        self._event_dispatcher.register('bar',            events.BarClosedEvent,      self._on_bar_closed_event)
+        self._event_dispatcher.register('orderPlaced',    events.OrderPlacedEvent,    self._on_order_placed_event)
+        self._event_dispatcher.register('orderFinished',  events.OrderFinishedEvent,  self._on_order_finished_event)
+        self._event_dispatcher.register('orderModified',  events.OrderModifiedEvent,  self._on_order_modified_event)
+        self._event_dispatcher.register('orderUpdated',   events.OrderUpdatedEvent,   self._on_order_updated_event)
+        self._event_dispatcher.register('accountChanged', events.AccountChangedEvent, self._on_account_changed_event)
+        self._event_dispatcher.register('equityUpdated',  events.EquityUpdatedEvent,  self._on_equity_updated_event)
 
         self._subscribed_symbols: Set[str] = set()
         self._logger = logging.getLogger(MetaTrader4.__name__)
@@ -75,14 +87,6 @@ class MetaTrader4(Exchange):
 
         Having an order object stored means we got order data from the server.
         """
-
-        self._event_dispatcher = events.Dispatcher()
-        self._event_dispatcher.register('tick',          events.TickEvent,          self._on_tick_event)
-        self._event_dispatcher.register('bar',           events.BarClosedEvent,     self._on_bar_closed_event)
-        self._event_dispatcher.register('orderPlaced',   events.OrderPlacedEvent,   self._on_order_placed_event)
-        self._event_dispatcher.register('orderFinished', events.OrderFinishedEvent, self._on_order_finished_event)
-        self._event_dispatcher.register('orderModified', events.OrderModifiedEvent, self._on_order_modified_event)
-        self._event_dispatcher.register('orderUpdated',  events.OrderUpdatedEvent,  self._on_order_updated_event)
 
         self.connect(protocol, host, req_port, sub_port)
 
@@ -728,3 +732,27 @@ class MetaTrader4(Exchange):
             order._swap       = event.swap()
 
         self.order_updated.emit(ticket)
+
+    def _on_account_changed_event(self, event: events.AccountChangedEvent):
+        self.account._currency       = event.currency()
+        self.account._leverage       = event.leverage()
+        self.account._credit         = event.credit()
+        self.account._expert_allowed = event.is_expert_allowed()
+        self.account._trade_allowed  = event.is_trade_allowed()
+        self.account._order_limit    = event.max_active_orders()
+
+        self.account_updated.emit(self.account)
+
+    def _on_equity_updated_event(self, event: events.EquityUpdatedEvent):
+        self.account._equity       = event.equity()
+        self.account._profit       = event.profit()
+        self.account._margin       = event.margin()
+        self.account._margin_level = event.margin_level()
+        self.account._free_margin  = event.free_margin()
+
+        balance = event.balance()
+
+        if balance is not None:
+            self.account._balance = balance
+
+        self.account_updated.emit(self.account)
