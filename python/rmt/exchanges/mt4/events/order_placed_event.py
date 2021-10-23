@@ -1,53 +1,62 @@
-from datetime import datetime
-from rmt import jsonutil, Order, Side, OrderType, OrderStatus
-from ..  import Content, OperationCode
-from .   import Event
+from datetime import datetime, timezone
+from .        import Event
 
-class OrderPlacedEvent(Event):
-    def __init__(self, dynamic_name: str, content: Content):
-        if not isinstance(content, dict):
-            raise ValueError("order event content is of invalid type (expected: object, got: array)")
+class OrderPlacedEvent(Event):    
+    content_layout = {
+        'opcode':     int,
+        'ticket':     int,
+        'symbol':     str,
+        'lots':       float,
+        'op':         float,
+        'ot':         int,
+        'sl':         float,
+        'tp':         float,
+        'expiration': int,
+        'magic':      (int, 0),
+        'comment':    (str, ''),
+        'commission': float,
+        'profit':     float,
+        'swap':       float
+    }
 
-        opcode = jsonutil.read_required(content, 'opcode', int)
-        opcode = OperationCode(opcode)
+    def opcode(self) -> int:
+        return self['opcode']
 
-        side       = None
-        order_type = None
-        status     = None
+    def ticket(self) -> int:
+        return self['ticket']
 
-        if opcode in [OperationCode.BUY, OperationCode.SELL]:
-            side       = Side.BUY if opcode == OperationCode.BUY else Side.SELL
-            order_type = OrderType.MARKET_ORDER
-            status     = OrderStatus.FILLED
+    def symbol(self) -> str:
+        return self['symbol']
 
-        elif opcode in [OperationCode.BUY_LIMIT, OperationCode.SELL_LIMIT]:
-            side       = Side.BUY if opcode == OperationCode.BUY_LIMIT else Side.SELL
-            order_type = OrderType.LIMIT_ORDER
-            status     = OrderStatus.PENDING
+    def lots(self) -> float:
+        return self['lots']
 
-        else:
-            side       = Side.BUY if opcode == OperationCode.BUY_STOP else Side.SELL
-            order_type = OrderType.STOP_ORDER
-            status     = OrderStatus.PENDING
-        
-        self._order = Order(
-            ticket       = jsonutil.read_required(content, 'ticket', int),
-            symbol       = jsonutil.read_required(content, 'symbol', str),
-            side         = side,
-            type         = order_type,
-            lots         = jsonutil.read_required(content, 'lots', float),
-            status       = status,
-            open_price   = jsonutil.read_required(content, 'op',         float),
-            open_time    = jsonutil.read_required(content, 'ot',         datetime),
-            stop_loss    = jsonutil.read_required(content, 'sl',         float),
-            take_profit  = jsonutil.read_required(content, 'tp',         float),
-            expiration   = jsonutil.read_required(content, 'expiration', datetime),
-            magic_number = jsonutil.read_optional(content, 'magic',      int),
-            comment      = jsonutil.read_optional(content, 'comment',    str),
-            commission   = jsonutil.read_required(content, 'commission', float),
-            profit       = jsonutil.read_required(content, 'profit',     float),
-            swap         = jsonutil.read_required(content, 'swap',       float)
-        )
+    def open_price(self) -> float:
+        return self['op']
 
-    def order(self) -> Order:
-        return self._order
+    def open_time(self) -> datetime:
+        return datetime.fromtimestamp(self['ot'], timezone.utc)
+
+    def stop_loss(self) -> float:
+        return self['sl']
+
+    def take_profit(self) -> float:
+        return self['tp']
+
+    def expiration(self) -> datetime:
+        return datetime.fromtimestamp(self['expiration'], timezone.utc)
+
+    def magic_number(self) -> int:
+        return self['magic']
+
+    def comment(self) -> str:
+        return self['comment']
+
+    def commission(self) -> float:
+        return self['commission']
+
+    def profit(self) -> float:
+        return self['profit']
+
+    def swap(self) -> float:
+        return self['swap']

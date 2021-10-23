@@ -630,72 +630,155 @@ class MetaTrader4(Exchange):
         self._event_dispatcher.dispatch(event_name, content)
 
     def _on_tick_event(self, event: events.TickEvent):
-        self.tick_received.emit(event.symbol(), event.tick())
+        tick = Tick(
+            server_time = event.server_time(),
+            bid         = event.bid(),
+            ask         = event.ask()
+        )
+
+        self.tick_received.emit(event.symbol(), tick)
 
     def _on_bar_closed_event(self, event: events.BarClosedEvent):
-        self.bar_closed.emit(event.symbol(), event.bar())
+        bar = Bar(
+            time   = event.time(),
+            open   = event.open(),
+            high   = event.high(),
+            low    = event.low(),
+            close  = event.close(),
+            volume = event.volume()
+        )
+
+        self.bar_closed.emit(event.symbol(), bar)
 
     def _on_order_placed_event(self, event: events.OrderPlacedEvent):
-        event_order = event.order()
-        ticket      = event_order.ticket()
-
-        tracked_order = None
+        ticket = event.ticket()
+        order  = None
 
         try:
-            tracked_order = self._orders[ticket]
+            order = self._orders[ticket]
         except KeyError:
             pass
-
-        if tracked_order is None:
-            self._orders[ticket] = event_order
-        else:
-            tracked_order._side         = event_order.side()
-            tracked_order._type         = event_order.type()
-            tracked_order._lots         = event_order.lots()
-            tracked_order._status       = event_order.status()
-            tracked_order._open_price   = event_order.open_price()
-            tracked_order._open_time    = event_order.open_time()
-            tracked_order._stop_loss    = event_order.stop_loss()
-            tracked_order._take_profit  = event_order.take_profit()
-            tracked_order._expiration   = event_order.expiration()
-            tracked_order._magic_number = event_order.magic_number()
-            tracked_order._comment      = event_order.comment()
-            tracked_order._commission   = event_order.commission()
-            tracked_order._profit       = event_order.profit()
-            tracked_order._swap         = event_order.swap()
         
-        if event_order.status() == OrderStatus.PENDING:
+        opcode       = OperationCode(event.opcode())
+        symbol       = event.symbol()
+        lots         = event.lots()
+        open_price   = event.open_price()
+        open_time    = event.open_time()
+        stop_loss    = event.stop_loss()
+        take_profit  = event.take_profit()
+        expiration   = event.expiration()
+        magic_number = event.magic_number()
+        comment      = event.comment()
+        commission   = event.commission()
+        profit       = event.profit()
+        swap         = event.swap()
+
+        side       = None
+        order_type = None
+        status     = None
+
+        if opcode in [OperationCode.BUY, OperationCode.SELL]:
+            side       = Side.BUY if opcode == OperationCode.BUY else Side.SELL
+            order_type = OrderType.MARKET_ORDER
+            status     = OrderStatus.FILLED
+
+        elif opcode in [OperationCode.BUY_LIMIT, OperationCode.SELL_LIMIT]:
+            side       = Side.BUY if opcode == OperationCode.BUY_LIMIT else Side.SELL
+            order_type = OrderType.LIMIT_ORDER
+            status     = OrderStatus.PENDING
+
+        else:
+            side       = Side.BUY if opcode == OperationCode.BUY_STOP else Side.SELL
+            order_type = OrderType.STOP_ORDER
+            status     = OrderStatus.PENDING
+
+        if order is None:
+            order = Order(
+                ticket       = ticket,
+                symbol       = symbol,
+                side         = side,
+                type         = order_type,
+                lots         = lots,
+                status       = status,
+                open_price   = open_price,
+                open_time    = open_time,
+                stop_loss    = stop_loss,
+                take_profit  = take_profit,
+                expiration   = expiration,
+                magic_number = magic_number,
+                comment      = comment,
+                commission   = commission,
+                profit       = profit,
+                swap         = swap
+            )
+
+            self._orders[ticket] = order
+        else:
+            order._side         = side
+            order._type         = order_type
+            order._lots         = lots
+            order._status       = status
+            order._open_price   = open_price
+            order._open_time    = open_time
+            order._stop_loss    = stop_loss
+            order._take_profit  = take_profit
+            order._expiration   = expiration
+            order._magic_number = magic_number
+            order._comment      = comment
+            order._commission   = commission
+            order._profit       = profit
+            order._swap         = swap
+
+        if status == OrderStatus.PENDING:
             self.order_opened.emit(ticket)
         else:
             self.order_filled.emit(ticket)
     
     def _on_order_finished_event(self, event: events.OrderFinishedEvent):
         ticket = event.ticket()
-        order = None
+        order  = None
 
         try:
             order = self._orders[ticket]
         except KeyError:
             return
 
+        opcode      = OperationCode(event.opcode())
+        close_price = event.close_price()
+        close_time  = event.close_time()
+        stop_loss   = event.stop_loss()
+        take_profit = event.take_profit()
+        expiration  = event.expiration()
+        comment     = event.comment()
+        commission  = event.commission()
+        profit      = event.profit()
+        swap        = event.swap()
+        status      = None
+
+        if opcode in [OperationCode.BUY, OperationCode.SELL]:
+            status = OrderStatus.CLOSED
+        else:
+            if int(expiration.timestamp()) > 0 and close_time >= expiration:
+                status = OrderStatus.EXPIRED
+            else:
+                status = OrderStatus.CANCELED
+
         if order is not None:
-            order._status      = event.status()
-            order._close_price = event.close_price()
-            order._close_time  = event.close_time()
-            order._stop_loss   = event.stop_loss()
-            order._take_profit = event.take_profit()
-            order._expiration  = event.expiration()
-            order._comment     = event.comment()
-            order._commission  = event.commission()
-            order._profit      = event.profit()
-            order._swap        = event.swap()
+            order._status      = status
+            order._close_price = close_price
+            order._close_time  = close_time
+            order._stop_loss   = stop_loss
+            order._take_profit = take_profit
+            order._expiration  = expiration
+            order._comment     = comment
+            order._commission  = commission
+            order._profit      = profit
+            order._swap        = swap
 
-        if event.status() == OrderStatus.CLOSED:
+        if status == OrderStatus.CLOSED:
             self.order_closed.emit(ticket)
-
-        elif event.status() == OrderStatus.CANCELED:
+        elif status == OrderStatus.CANCELED:
             self.order_canceled.emit(ticket)
-
         else:
             self.order_expired.emit(ticket)
 

@@ -1,8 +1,16 @@
-from rmt import error
+from rmt import JsonModel
 from ..  import Content
 
-class Event:
+class Event(JsonModel):
     """Represents an event that ocurred on the exchange server."""
 
+    content_layout = {}
+
     def __init__(self, dynamic_name: str, content: Content):
-        raise error.NotImplementedException(self.__class__, '__init__')
+        super().__init__(self.content_layout, content)
+
+        self._dynamic_name = dynamic_name
+
+    @property
+    def dynamic_name(self) -> str:
+        return self._dynamic_name

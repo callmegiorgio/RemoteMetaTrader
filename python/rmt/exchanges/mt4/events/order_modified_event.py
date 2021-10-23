@@ -1,30 +1,26 @@
-from datetime import datetime
-from rmt import jsonutil
-from ..  import Content
-from .   import Event
+from datetime import datetime, timezone
+from .        import Event
 
 class OrderModifiedEvent(Event):
-    def __init__(self, dynamic_name: str, content: Content):
-        if not isinstance(content, dict):
-            raise ValueError("order event content is of invalid type (expected: object, got: array)")
-
-        self._ticket      = jsonutil.read_required(content, 'ticket',     int)
-        self._open_price  = jsonutil.read_required(content, 'op',         float)
-        self._stop_loss   = jsonutil.read_required(content, 'sl',         float)
-        self._take_profit = jsonutil.read_required(content, 'tp',         float)
-        self._expiration  = jsonutil.read_required(content, 'expiration', datetime)
+    content_layout = {
+        'ticket':     int,
+        'op':         float,
+        'sl':         float,
+        'tp':         float,
+        'expiration': int
+    }
 
     def ticket(self) -> int:
-        return self._ticket
+        return self['ticket']
 
     def open_price(self) -> float:
-        return self._open_price
+        return self['op']
 
     def stop_loss(self) -> float:
-        return self._stop_loss
+        return self['sl']
 
     def take_profit(self) -> float:
-        return self._take_profit
+        return self['tp']
 
     def expiration(self) -> datetime:
-        return self._expiration
+        return datetime.fromtimestamp(self['expiration'], timezone.utc)
