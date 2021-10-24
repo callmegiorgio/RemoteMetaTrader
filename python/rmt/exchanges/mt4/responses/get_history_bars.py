@@ -1,29 +1,23 @@
 from datetime import datetime, timezone
-from typing   import List
-from rmt      import Bar, jsonutil
-from ..       import Content
+from .        import Response
 
-class GetHistoryBarsResponse:
-    def __init__(self, content: Content):
-        self._bars: List[Bar] = []
+class GetHistoryBars(Response):
+    content_layout = [[int, float, float, float, float]]
 
-        for i, _ in enumerate(content):
-            bar = jsonutil.read_required(content, i, list)
-            t   = jsonutil.read_required(bar,     0, int)
-            o   = jsonutil.read_required(bar,     1, float)
-            h   = jsonutil.read_required(bar,     2, float)
-            l   = jsonutil.read_required(bar,     3, float)
-            c   = jsonutil.read_required(bar,     4, float)
+    def bar_count(self) -> int:
+        return len(self)
 
-            bar = Bar(
-                time  = datetime.fromtimestamp(t, timezone.utc),
-                open  = o,
-                high  = h,
-                low   = l,
-                close = c
-            )
+    def time(self, index: int) -> datetime:
+        return datetime.fromtimestamp(self[index][0], timezone.utc)
 
-            self._bars.append(bar)
+    def open(self, index: int) -> float:
+        return self[index][1]
 
-    def bars(self) -> List[Bar]:
-        return self._bars
+    def high(self, index: int) -> float:
+        return self[index][2]
+
+    def low(self, index: int) -> float:
+        return self[index][3]
+
+    def close(self, index: int) -> float:
+        return self[index][4]

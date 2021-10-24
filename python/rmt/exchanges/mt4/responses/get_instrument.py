@@ -1,61 +1,61 @@
-from rmt import jsonutil
-from ..  import Content
+from . import Response
 
-class GetInstrumentResponse:
-    def __init__(self, content: Content):
-        self._description         = jsonutil.read_optional(content, 'desc',       str)
-        self._base_currency       = jsonutil.read_optional(content, 'bcurrency',  str)
-        self._profit_currency     = jsonutil.read_optional(content, 'pcurrency',  str)
-        self._margin_currency     = jsonutil.read_optional(content, 'mcurrency',  str)
-        self._decimal_places      = jsonutil.read_required(content, 'ndecimals',  int)
-        self._point               = jsonutil.read_required(content, 'point',      float)
-        self._tick_size           = jsonutil.read_required(content, 'ticksz',     float)
-        self._contract_size       = jsonutil.read_required(content, 'contractsz', float)
-        self._lot_step            = jsonutil.read_required(content, 'lotstep',    float)
-        self._min_lot             = jsonutil.read_required(content, 'minlot',     float)
-        self._max_lot             = jsonutil.read_required(content, 'maxlot',     float)
-        self._min_stop_lvl        = jsonutil.read_required(content, 'minstop',    int)
-        self._freeze_lvl          = jsonutil.read_required(content, 'freezelvl',  int)
-        self._spread              = jsonutil.read_required(content, 'spread',     int)
+class GetInstrument(Response):
+    content_layout = {
+        'desc':       str,
+        'bcurrency':  str,
+        'pcurrency':  str,
+        'mcurrency':  str,
+        'ndecimals':  int,
+        'point':      float,
+        'ticksz':     float,
+        'contractsz': float,
+        'lotstep':    float,
+        'minlot':     float,
+        'maxlot':     float,
+        'minstop':    int,
+        'freezelvl':  int,
+        'spread':     int
+    }
 
     def description(self) -> str:
-        return self._description
+        return self['desc']
 
     def base_currency(self) -> str:
-        return self._base_currency
+        return self['bcurrency']
 
     def profit_currency(self) -> str:
-        return self._profit_currency
+        return self['pcurrency']
 
     def margin_currency(self) -> str:
-        return self._margin_currency
+        return self['mcurrency']
 
     def decimal_places(self) -> int:
-        return self._decimal_places
+        return self['ndecimals']
 
     def point(self) -> float:
-        return self._point
+        return self['point']
 
     def tick_size(self) -> float:
-        return self._tick_size
+        return self['ticksz']
 
     def contract_size(self) -> float:
-        return self._contract_size
+        return self['contractsz']
 
     def lot_step(self) -> float:
-        return self._lot_step
+        return self['lotstep']
 
     def min_lot(self) -> float:
-        return self._min_lot
+        return self['minlot']
 
     def max_lot(self) -> float:
-        return self._max_lot
+        return self['maxlot']
 
     def min_stop_level(self) -> int:
-        return self._min_stop_lvl
+        return self['minstop']
 
     def freeze_level(self) -> int:
-        return self._freeze_lvl
+        return self['freezelvl']
 
     def spread(self) -> int:
-        return self._spread
+        return self['spread']

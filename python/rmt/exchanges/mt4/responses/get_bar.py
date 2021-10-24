@@ -1,24 +1,23 @@
 from datetime import datetime, timezone
-from rmt      import Bar, jsonutil
-from ..       import Content
+from .        import Response
 
-class GetBarResponse:
-    def __init__(self, content: Content):
-        t = jsonutil.read_required(content, 0, int)
-        o = jsonutil.read_required(content, 1, float)
-        h = jsonutil.read_required(content, 2, float)
-        l = jsonutil.read_required(content, 3, float)
-        c = jsonutil.read_required(content, 4, float)
-        v = jsonutil.read_required(content, 5, int)
+class GetBar(Response):
+    content_layout = [int, float, float, float, float, int]
 
-        self._bar = Bar(
-            time   = datetime.fromtimestamp(t, timezone.utc),
-            open   = o,
-            high   = h,
-            low    = l,
-            close  = c,
-            volume = v
-        )
+    def time(self) -> datetime:
+        return datetime.fromtimestamp(self[0], timezone.utc)
 
-    def bar(self) -> Bar:
-        return self._bar
+    def open(self) -> float:
+        return self[1]
+
+    def high(self) -> float:
+        return self[2]
+
+    def low(self) -> float:
+        return self[3]
+
+    def close(self) -> float:
+        return self[4]
+
+    def volume(self) -> int:
+        return self[5]

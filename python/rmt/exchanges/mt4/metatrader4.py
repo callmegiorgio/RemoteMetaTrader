@@ -5,9 +5,11 @@ import rmt
 from datetime import datetime
 from typing   import Dict, List, Optional, Set, Tuple
 from time     import sleep
-from rmt      import (Order, Side, OrderType,
-                      Exchange, Tick, Bar, OrderStatus,
-                      Timeframe, Instrument, Account)
+from rmt      import (
+    Order, Side, OrderType, Exchange, Tick,
+    Bar, OrderStatus, Timeframe, Instrument,
+    Account, TradeMode
+)
 from . import *
 
 class MetaTrader4(Exchange):
@@ -119,14 +121,20 @@ class MetaTrader4(Exchange):
 
     def get_tick(self, symbol: str) -> Tick:
         request  = requests.GetTickRequest(symbol)
-        response = responses.GetTickResponse(self._send_request(request))
-        
-        return response.tick()
+        response = responses.GetTick(self._send_request(request))
+
+        tick = Tick(
+            server_time = response.server_time(),
+            bid         = response.bid(),
+            ask         = response.ask()
+        )
+
+        return tick
 
     def get_instrument(self, symbol: str) -> Instrument:
         if symbol not in self._instruments:
             request  = requests.GetInstrumentRequest(symbol)
-            response = responses.GetInstrumentResponse(self._send_request(request))
+            response = responses.GetInstrument(self._send_request(request))
 
             instrument = Instrument(
                 symbol          = symbol,
@@ -157,9 +165,24 @@ class MetaTrader4(Exchange):
                          timeframe:  Timeframe = Timeframe.M1
     ) -> List[Bar]:
         request  = requests.GetHistoryBarsRequest(symbol, start_time, end_time, timeframe)
-        response = responses.GetHistoryBarsResponse(self._send_request(request))
+        response = responses.GetHistoryBars(self._send_request(request))
+
+        bar_count = response.bar_count()
+        bars = []
+
+        for i in range(bar_count):
+            bar = Bar(
+                time   = response.time(i),
+                open   = response.open(i),
+                high   = response.high(i),
+                low    = response.low(i),
+                close  = response.close(i),
+                volume = 0, #TODO: volume = response.volume(i)
+            )
+
+            bars.append(bar)
         
-        return response.bars()
+        return bars
 
     def get_bar(self,
                 symbol: str,
@@ -167,9 +190,18 @@ class MetaTrader4(Exchange):
                 timeframe: Timeframe = Timeframe.M1
     ) -> Bar:
         request  = requests.GetBarRequest(symbol, index, timeframe)
-        response = responses.GetBarResponse(self._send_request(request))
+        response = responses.GetBar(self._send_request(request))
 
-        return response.bar()
+        bar = Bar(
+            time   = response.time(),
+            open   = response.open(),
+            high   = response.high(),
+            low    = response.low(),
+            close  = response.close(),
+            volume = response.volume()
+        )
+
+        return bar
 
     def subscribe(self, symbol: str):
         if symbol in self._subscribed_symbols:
@@ -265,17 +297,26 @@ class MetaTrader4(Exchange):
                 raise rmt.error.OffQuotes(symbol, side, order_type) from None
 
             elif e.code == CommandResultCode.REQUOTE:
-                raise rmt.error.Requote(symbol, price) from None
+                raise rmt.error.Requote(symbol) from None
 
             else:
                 raise e from None
 
-        response = responses.PlaceOrderResponse(response_content)
-
-        order_info = response.order_info()
-        order = None
+        response = responses.PlaceOrder(response_content)
 
         ticket = response.ticket()
+        order  = None
+
+        order_properties = (
+            response.lots(),
+            response.open_price(),
+            response.open_time(),
+            response.commission(),
+            response.profit(),
+            response.swap()
+        )
+
+        has_order_properties = all(prop is not None for prop in order_properties)
 
         ################################################################################
         # Add order to list of tracked orders if the response also contains information
@@ -294,11 +335,11 @@ class MetaTrader4(Exchange):
         # info about the order again from the server. In that case, if OrderSelect()
         # fails another time, *then* an exception is raised.
         ################################################################################
-        if order_info is not None:
+        if has_order_properties:
             status = None
 
             if order_type == OrderType.MARKET_ORDER:
-                if order_info.lots() < lots:
+                if response.lots() < lots:
                     status = OrderStatus.PARTIALLY_FILLED
                 else:
                     status = OrderStatus.FILLED
@@ -310,20 +351,18 @@ class MetaTrader4(Exchange):
                 symbol       = symbol,
                 side         = side,
                 type         = order_type,
-                lots         = order_info.lots(),
+                lots         = response.lots(),
                 status       = status,
-                open_price   = order_info.open_price(),
-                open_time    = order_info.open_time(),
-                close_price  = None,
-                close_time   = None,
+                open_price   = response.open_price(),
+                open_time    = response.open_time(),
                 expiration   = expiration,
                 stop_loss    = stop_loss,
                 take_profit  = take_profit,
                 magic_number = int(magic_number),
                 comment      = str(comment),
-                commission   = order_info.commission(),
-                profit       = order_info.profit(),
-                swap         = order_info.swap(),
+                commission   = response.commission(),
+                profit       = response.profit(),
+                swap         = response.swap()
             )
 
         self._orders[ticket] = order
@@ -415,23 +454,24 @@ class MetaTrader4(Exchange):
             else:
                 raise e from None
 
-        response = responses.CloseOrderResponse(response_content)
+        response = responses.CloseOrder(response_content)
 
         try:
             order = self._orders[ticket]
-
-            if order is not None:
-                order._status      = OrderStatus.CLOSED
-                order._lots        = response.lots()
-                order._close_price = response.close_price()
-                order._close_time  = response.close_time()
-                order._comment     = response.comment()
-                order._commission  = response.commission()
-                order._profit      = response.profit()
-                order._swap        = response.swap()
-        
         except KeyError:
             pass
+
+        if order is None:
+            return ticket
+
+        order._status      = OrderStatus.CLOSED
+        order._lots        = response.lots()
+        order._close_price = response.close_price()
+        order._close_time  = response.close_time()
+        order._comment     = response.comment()
+        order._commission  = response.commission()
+        order._profit      = response.profit()
+        order._swap        = response.swap()
 
         new_order = response.new_order()
 
@@ -481,17 +521,72 @@ class MetaTrader4(Exchange):
             else:
                 raise e from None
 
-        response = responses.GetOrderResponse(ticket, response_content)
+        response = responses.GetOrder(response_content)
 
-        self._orders[ticket] = response.order()
+        opcode = OperationCode(response.opcode())
+        status = response.status()
+        
+        if   status == 'pending':  status = OrderStatus.PENDING
+        elif status == 'filled':   status = OrderStatus.FILLED
+        elif status == 'canceled': status = OrderStatus.CANCELED
+        elif status == 'expired':  status = OrderStatus.EXPIRED
+        elif status == 'closed':   status = OrderStatus.CLOSED
+        else:
+            raise ValueError("invalid order status '{}'".format(status))
 
-        return response.order()
+        side       = None
+        order_type = None
+
+        if opcode in [OperationCode.BUY, OperationCode.SELL]:
+            side       = Side.BUY if opcode == OperationCode.BUY else Side.SELL
+            order_type = OrderType.MARKET_ORDER
+        elif opcode in [OperationCode.BUY_LIMIT, OperationCode.SELL_LIMIT]:
+            side       = Side.BUY if opcode == OperationCode.BUY_LIMIT else Side.SELL
+            order_type = OrderType.LIMIT_ORDER
+        else:
+            side       = Side.BUY if opcode == OperationCode.BUY_STOP else Side.SELL
+            order_type = OrderType.STOP_ORDER
+
+        close_price = response.close_price()
+        close_time  = response.close_time()
+
+        if status == OrderStatus.CLOSED:
+            if close_price is None:
+                raise ValueError("missing close price in response of command get_order()")
+            
+            if close_time is None:
+                raise ValueError("missing close time in response of command get_order()")
+
+        order = Order(
+            ticket       = ticket,
+            symbol       = response.symbol(),
+            side         = side,
+            type         = order_type,
+            lots         = response.lots(),
+            status       = status,
+            open_price   = response.open_price(),
+            open_time    = response.open_time(),
+            close_price  = close_price,
+            close_time   = close_time,
+            stop_loss    = response.stop_loss(),
+            take_profit  = response.take_profit(),
+            expiration   = response.expiration(),
+            magic_number = response.magic_number(),
+            comment      = response.comment(),
+            commission   = response.commission(),
+            profit       = response.profit(),
+            swap         = response.swap()
+        )
+
+        self._orders[ticket] = order
+
+        return order
 
     def get_exchange_rate(self, base_currency: str, quote_currency: str) -> float:
         request = requests.GetExchangeRateRequest(base_currency, quote_currency)
 
         try:
-            response = responses.GetExchangeRateResponse(self._send_request(request))
+            response = responses.GetExchangeRate(self._send_request(request))
             return response.rate()
         except MQL4Error as e:
             if e.code == CommandResultCode.EXCHANGE_RATE_FAILED:
@@ -517,9 +612,29 @@ class MetaTrader4(Exchange):
     #===============================================================================
     def _get_account(self) -> Account:
         request  = requests.GetAccountRequest()
-        response = responses.GetAccountResponse(self._send_request(request))
+        response = responses.GetAccount(self._send_request(request))
 
-        return response.account()
+        account = Account(
+            login          = response.login(),
+            name           = response.name(),
+            server         = response.server(),
+            company        = response.company(),
+            mode           = TradeMode(response.mode()),
+            leverage       = response.leverage(),
+            order_limit    = response.order_limit(),
+            currency       = response.currency(),
+            balance        = response.balance(),
+            credit         = response.credit(),
+            profit         = response.profit(),
+            equity         = response.equity(),
+            margin         = response.margin(),
+            free_margin    = response.free_margin(),
+            margin_level   = response.margin_level(),
+            trade_allowed  = response.is_trade_allowed(),
+            expert_allowed = response.is_expert_allowed()
+        )
+
+        return account
     
     def _subscribe_instrument_event(self, symbol: str):
         self._sub_socket.subscribe('tick.' + symbol)

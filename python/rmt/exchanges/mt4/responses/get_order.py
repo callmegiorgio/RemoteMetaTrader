@@ -1,95 +1,81 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing   import Optional
-from rmt      import jsonutil, Side, Order, OrderType, OrderStatus
-from ..       import Content, OperationCode
+from .        import Response
 
-class GetOrderResponse:
-    def __init__(self, ticket: int, content: Content):
-        opcode       = self._read_opcode(content)
-        status       = self._read_status(content)
-        symbol       = jsonutil.read_required(content, 'symbol',     str)
-        lots         = jsonutil.read_required(content, 'lots',       float)
-        open_price   = jsonutil.read_required(content, 'op',         float)
-        open_time    = jsonutil.read_required(content, 'ot',         datetime)
-        close_price  = self._read_close_price(content, status)
-        close_time   = self._read_close_time (content, status)
-        stop_loss    = jsonutil.read_optional(content, 'sl',         float,    None)
-        take_profit  = jsonutil.read_optional(content, 'tp',         float,    None)
-        expiration   = jsonutil.read_optional(content, 'expiration', datetime, None)
-        comment      = jsonutil.read_optional(content, 'comment',    str,      '')
-        magic_number = jsonutil.read_optional(content, 'magic',      int,      0)
-        commission   = jsonutil.read_required(content, 'commission', float)
-        profit       = jsonutil.read_required(content, 'profit',     float)
-        swap         = jsonutil.read_required(content, 'swap',       float)
+class GetOrder(Response):
+    content_layout = {
+        'opcode':     int,
+        'status':     str,
+        'symbol':     str,
+        'lots':       float,
+        'op':         float,
+        'ot':         int,
+        'cp':         (int,   None),
+        'ct':         (int,   None),
+        'sl':         (float, None),
+        'tp':         (float, None),
+        'expiration': (int,   None),
+        'comment':    (str,   ''),
+        'magic':      (int,   0),
+        'commission': float,
+        'profit':     float,
+        'swap':       float
+    }
 
-        side       = None
-        order_type = None
+    def opcode(self) -> int:
+        return self['opcode']
 
-        if opcode in [OperationCode.BUY, OperationCode.SELL]:
-            side       = Side.BUY if opcode == OperationCode.BUY else Side.SELL
-            order_type = OrderType.MARKET_ORDER
-        elif opcode in [OperationCode.BUY_LIMIT, OperationCode.SELL_LIMIT]:
-            side       = Side.BUY if opcode == OperationCode.BUY_LIMIT else Side.SELL
-            order_type = OrderType.LIMIT_ORDER
-        else:
-            side       = Side.BUY if opcode == OperationCode.BUY_STOP else Side.SELL
-            order_type = OrderType.STOP_ORDER
+    def status(self) -> str:
+        return self['status']
 
-        self._order = Order(
-            ticket       = ticket,
-            symbol       = symbol,
-            side         = side,
-            type         = order_type,
-            lots         = lots,
-            status       = status,
-            open_price   = open_price,
-            open_time    = open_time,
-            close_price  = close_price,
-            close_time   = close_time,
-            stop_loss    = stop_loss,
-            take_profit  = take_profit,
-            expiration   = expiration,
-            magic_number = magic_number,
-            comment      = comment,
-            commission   = commission,
-            profit       = profit,
-            swap         = swap
-        )
+    def symbol(self) -> str:
+        return self['symbol']
 
-    def _read_opcode(self, content: Content) -> OperationCode:
-        opcode = jsonutil.read_required(content, 'opcode', int)
+    def lots(self) -> float:
+        return self['lots']
 
-        is_valid_opcode = any(opcode == o.value for o in OperationCode)
+    def open_price(self) -> float:
+        return self['op']
 
-        if not is_valid_opcode:
-            raise ValueError("invalid operation code %s" % opcode)
+    def open_time(self) -> datetime:
+        return datetime.fromtimestamp(self['ot'], timezone.utc)
 
-        return OperationCode(opcode)
+    def close_price(self) -> Optional[float]:
+        return self['cp']
 
-    def _read_status(self, content: Content) -> OrderStatus:
-        status = jsonutil.read_required(content, 'status', str)
-        
-        if   status == 'pending':  status = OrderStatus.PENDING
-        elif status == 'filled':   status = OrderStatus.FILLED
-        elif status == 'canceled': status = OrderStatus.CANCELED
-        elif status == 'expired':  status = OrderStatus.EXPIRED
-        elif status == 'closed':   status = OrderStatus.CLOSED
-        else:
-            raise ValueError("invalid order status '%s'" % status)
+    def close_time(self) -> Optional[datetime]:
+        close_time = self['ct']
 
-        return status
+        if close_time is not None:
+            close_time = datetime.fromtimestamp(close_time, timezone.utc)
 
-    def _read_close_price(self, content: Content, status: OrderStatus) -> Optional[float]:
-        if status == OrderStatus.CLOSED:
-            return jsonutil.read_required(content, 'cp', float)
-        else:
-            return None
+        return close_time
 
-    def _read_close_time(self, content: Content, status: OrderStatus) -> Optional[datetime]:
-        if status == OrderStatus.CLOSED:
-            return jsonutil.read_required(content, 'ct', datetime)
-        else:
-            return None
+    def stop_loss(self) -> Optional[float]:
+        return self['sl']
 
-    def order(self) -> Order:
-        return self._order
+    def take_profit(self) -> Optional[float]:
+        return self['tp']
+
+    def expiration(self) -> Optional[datetime]:
+        expiration = self['expiration']
+
+        if expiration is not None:
+            expiration = datetime.fromtimestamp(expiration, timezone.utc)
+
+        return expiration
+
+    def comment(self) -> str:
+        return self['comment']
+
+    def magic_number(self) -> int:
+        return self['magic']
+
+    def commission(self) -> float:
+        return self['commission']
+
+    def profit(self) -> float:
+        return self['profit']
+
+    def swap(self) -> float:
+        return self['swap']

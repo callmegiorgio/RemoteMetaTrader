@@ -1,50 +1,35 @@
 from datetime import datetime, timezone
 from typing   import Optional
-from rmt      import jsonutil
-from ..       import Content
+from .        import Response
 
-class PlaceOrderResponse:
-    class OrderInfo:
-        def __init__(self, content: Content):
-            self._lots       = jsonutil.read_required(content, 'lots',       float)
-            self._open_price = jsonutil.read_required(content, 'op',         float)
-            open_timestamp   = jsonutil.read_required(content, 'ot',         int)
-            self._commission = jsonutil.read_required(content, 'commission', float)
-            self._profit     = jsonutil.read_required(content, 'profit',     float)
-            self._swap       = jsonutil.read_required(content, 'swap',       float)
+class PlaceOrder(Response):
+    content_layout = {
+        'ticket':     int,
+        'lots':       (float, None),
+        'op':         (float, None),
+        'ot':         (int,   None),
+        'commission': (float, None),
+        'profit':     (float, None),
+        'swap':       (float, None)
+    }   
 
-            self._open_time = datetime.fromtimestamp(open_timestamp, timezone.utc)
-
-        def lots(self) -> float:
-            return self._lots
-
-        def open_price(self) -> float:
-            return self._open_price
-
-        def open_time(self) -> datetime:
-            return self._open_time
-
-        def commission(self) -> float:
-            return self._commission
-
-        def profit(self) -> float:
-            return self._profit
-
-        def swap(self) -> float:
-            return self._swap
-
-    def __init__(self, content: Content):
-        self._ticket = jsonutil.read_required(content, 'ticket', int)
-
-        try:
-            self._order_info = PlaceOrderResponse.OrderInfo(content)
-        except (IndexError, KeyError, TypeError):
-            self._order_info = None
-    
     def ticket(self) -> int:
-        return self._ticket
+        return self['ticket']
 
-    def order_info(self) -> Optional[OrderInfo]:
-        return self._order_info
+    def lots(self) -> Optional[float]:
+        return self['lots']
 
-    
+    def open_price(self) -> Optional[float]:
+        return self['op']
+
+    def open_time(self) -> Optional[datetime]:
+        return datetime.fromtimestamp(self['ot'], timezone.utc)
+
+    def commission(self) -> Optional[float]:
+        return self['commission']
+
+    def profit(self) -> Optional[float]:
+        return self['profit']
+
+    def swap(self) -> Optional[float]:
+        return self['swap']

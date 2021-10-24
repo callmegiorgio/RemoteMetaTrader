@@ -1,18 +1,18 @@
 from datetime import datetime, timezone
-from rmt      import jsonutil, Tick
-from ..       import Content
+from .        import Response
 
-class GetTickResponse:
-    def __init__(self, content: Content):
-        server_time = jsonutil.read_required(content, 'time', int)
-        bid         = jsonutil.read_required(content, 'bid',  float)
-        ask         = jsonutil.read_required(content, 'ask',  float)
+class GetTick(Response):
+    content_layout = {
+        'time': int,
+        'bid':  float,
+        'ask':  float
+    }
 
-        self._tick = Tick(
-            server_time = datetime.fromtimestamp(server_time, timezone.utc),
-            bid = bid,
-            ask = ask
-        )
-    
-    def tick(self) -> Tick:
-        return self._tick
+    def server_time(self) -> int: 
+        return datetime.fromtimestamp(self['time'], timezone.utc)
+
+    def bid(self) -> float: 
+        return self['bid']
+
+    def ask(self) -> float: 
+        return self['ask']
