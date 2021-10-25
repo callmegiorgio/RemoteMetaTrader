@@ -1,6 +1,4 @@
-from rmt import jsonutil
-from ..  import Content
-from .   import Event
+from . import Event
 
 class AccountChangedEvent(Event):
     content_layout = {

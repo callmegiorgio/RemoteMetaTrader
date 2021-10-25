@@ -1,5 +1,4 @@
 from .slotted_class import SlottedClass
-from .              import jsonutil
 from .json_model    import JsonModel, JsonModelError
 from .              import predicate
 from .predicate     import Predicate, TimePredicate

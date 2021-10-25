@@ -1,7 +1,5 @@
 from datetime import datetime, timezone
-from rmt import jsonutil, OrderStatus
-from ..  import Content, OperationCode
-from .   import Event
+from .        import Event
 
 class OrderFinishedEvent(Event):
     content_layout = {
