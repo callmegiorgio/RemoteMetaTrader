@@ -1,7 +1,7 @@
 from .. import Content
 from .  import Request
 
-class GetExchangeRateRequest(Request):
+class GetExchangeRate(Request):
     command = 'getExchangeRate'
 
     def __init__(self, base_currency: str, quote_currency: str):

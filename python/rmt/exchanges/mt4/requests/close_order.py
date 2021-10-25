@@ -2,7 +2,7 @@ from typing import Optional
 from ..     import Content
 from .      import Request
 
-class CloseOrderRequest(Request):
+class CloseOrder(Request):
     command = 'closeOrder'
 
     def __init__(self,

@@ -4,7 +4,7 @@ from rmt      import Timeframe
 from ..       import Content
 from .        import Request
 
-class GetHistoryBarsRequest(Request):
+class GetHistoryBars(Request):
     command = 'getHistoryBars'
 
     def __init__(self,

@@ -3,7 +3,7 @@ from typing   import Optional
 from ..       import Content
 from .        import Request
 
-class ModifyOrderRequest(Request):
+class ModifyOrder(Request):
     command = 'modifyOrder'
 
     def __init__(self,

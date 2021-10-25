@@ -120,7 +120,7 @@ class MetaTrader4(Exchange):
         return self._account
 
     def get_tick(self, symbol: str) -> Tick:
-        request  = requests.GetTickRequest(symbol)
+        request  = requests.GetTick(symbol)
         response = responses.GetTick(self._send_request(request))
 
         tick = Tick(
@@ -133,7 +133,7 @@ class MetaTrader4(Exchange):
 
     def get_instrument(self, symbol: str) -> Instrument:
         if symbol not in self._instruments:
-            request  = requests.GetInstrumentRequest(symbol)
+            request  = requests.GetInstrument(symbol)
             response = responses.GetInstrument(self._send_request(request))
 
             instrument = Instrument(
@@ -159,7 +159,7 @@ class MetaTrader4(Exchange):
         return self._instruments[symbol]
     
     def get_instruments(self) -> List[Instrument]:
-        request  = requests.GetInstrumentsRequest()
+        request  = requests.GetInstruments()
         response = responses.GetInstruments(self._send_request(request))
 
         instrument_count = response.instrument_count()
@@ -195,7 +195,7 @@ class MetaTrader4(Exchange):
                          end_time:   Optional[datetime] = None,
                          timeframe:  Timeframe = Timeframe.M1
     ) -> List[Bar]:
-        request  = requests.GetHistoryBarsRequest(symbol, start_time, end_time, timeframe)
+        request  = requests.GetHistoryBars(symbol, start_time, end_time, timeframe)
         response = responses.GetHistoryBars(self._send_request(request))
 
         bar_count = response.bar_count()
@@ -220,7 +220,7 @@ class MetaTrader4(Exchange):
                 index: int = 0,
                 timeframe: Timeframe = Timeframe.M1
     ) -> Bar:
-        request  = requests.GetBarRequest(symbol, index, timeframe)
+        request  = requests.GetBar(symbol, index, timeframe)
         response = responses.GetBar(self._send_request(request))
 
         bar = Bar(
@@ -238,7 +238,7 @@ class MetaTrader4(Exchange):
         if symbol in self._subscribed_symbols:
             return
 
-        request = requests.WatchSymbolRequest(symbol)
+        request = requests.WatchSymbol(symbol)
 
         try:
             self._send_request(request)
@@ -303,7 +303,7 @@ class MetaTrader4(Exchange):
         else:
             opcode = OperationCode.BUY_STOP if side == Side.BUY else OperationCode.SELL_STOP
 
-        request = requests.PlaceOrderRequest(
+        request = requests.PlaceOrder(
             symbol,
             opcode,
             lots,
@@ -411,7 +411,7 @@ class MetaTrader4(Exchange):
         if all(value is None for value in [stop_loss, take_profit, price, expiration]):
             return
 
-        request = requests.ModifyOrderRequest(
+        request = requests.ModifyOrder(
             ticket,
             stop_loss,
             take_profit,
@@ -449,7 +449,7 @@ class MetaTrader4(Exchange):
             pass
 
     def cancel_order(self, ticket: int):
-        request = requests.CancelOrderRequest(ticket)
+        request = requests.CancelOrder(ticket)
 
         try:
             self._send_request(request)
@@ -474,7 +474,7 @@ class MetaTrader4(Exchange):
                     slippage: int             = 0,
                     lots:     Optional[float] = None
     ) -> int:
-        request = requests.CloseOrderRequest(ticket, price, slippage, lots)
+        request = requests.CloseOrder(ticket, price, slippage, lots)
         response_content = None
 
         try:
@@ -541,7 +541,7 @@ class MetaTrader4(Exchange):
         except KeyError:
             pass
 
-        request = requests.GetOrderRequest(ticket)
+        request = requests.GetOrder(ticket)
         response_content = None
 
         try:
@@ -614,7 +614,7 @@ class MetaTrader4(Exchange):
         return order
 
     def get_exchange_rate(self, base_currency: str, quote_currency: str) -> float:
-        request = requests.GetExchangeRateRequest(base_currency, quote_currency)
+        request = requests.GetExchangeRate(base_currency, quote_currency)
 
         try:
             response = responses.GetExchangeRate(self._send_request(request))
@@ -642,7 +642,7 @@ class MetaTrader4(Exchange):
     # Internals (U Can't Touch This)
     #===============================================================================
     def _get_account(self) -> Account:
-        request  = requests.GetAccountRequest()
+        request  = requests.GetAccount()
         response = responses.GetAccount(self._send_request(request))
 
         account = Account(

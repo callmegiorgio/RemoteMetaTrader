@@ -1,7 +1,7 @@
 from .. import Content
 from .  import Request
 
-class GetAccountRequest(Request):
+class GetAccount(Request):
     command = 'getAccount'
 
     def content(self) -> Content:

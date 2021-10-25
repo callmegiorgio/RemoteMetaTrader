@@ -1,7 +1,7 @@
 from .. import Content
 from .  import Request
 
-class GetInstrumentRequest(Request):
+class GetInstrument(Request):
     command = 'getInstrument'
 
     def __init__(self, symbol: str):

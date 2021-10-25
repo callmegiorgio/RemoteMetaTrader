@@ -1,7 +1,7 @@
 from .. import Content
 from .  import Request
 
-class CancelOrderRequest(Request):
+class CancelOrder(Request):
     command = 'cancelOrder'
 
     def __init__(self, ticket: int):

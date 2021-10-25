@@ -1,7 +1,7 @@
 from .. import Content
 from .  import Request
 
-class GetTickRequest(Request):
+class GetTick(Request):
     command = 'getTick'
 
     def __init__(self, symbol: str):

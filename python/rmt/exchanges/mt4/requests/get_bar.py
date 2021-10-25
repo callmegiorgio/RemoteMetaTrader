@@ -2,7 +2,7 @@ from rmt import Timeframe
 from ..  import Content
 from .   import Request
 
-class GetBarRequest(Request):
+class GetBar(Request):
     command = 'getBar'
 
     def __init__(self, symbol: str, index: int, timeframe: Timeframe):

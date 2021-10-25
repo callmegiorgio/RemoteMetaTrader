@@ -1,7 +1,7 @@
 from .. import Content
 from .  import Request
 
-class WatchSymbolRequest(Request):
+class WatchSymbol(Request):
     command = 'watchSymbol'
 
     def __init__(self, symbol: str):
