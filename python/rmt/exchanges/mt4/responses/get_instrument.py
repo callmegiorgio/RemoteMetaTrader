@@ -2,20 +2,20 @@ from . import Response
 
 class GetInstrument(Response):
     content_layout = {
-        'desc':       str,
-        'bcurrency':  str,
-        'pcurrency':  str,
-        'mcurrency':  str,
-        'ndecimals':  int,
-        'point':      float,
-        'ticksz':     float,
-        'contractsz': float,
-        'lotstep':    float,
-        'minlot':     float,
-        'maxlot':     float,
-        'minstop':    int,
-        'freezelvl':  int,
-        'spread':     int
+        'desc':         (str, ''),
+        'bcurrency':    (str, ''),
+        'qcurrency':    (str, ''),
+        'mcurrency':    (str, ''),
+        'ndecimals':    int,
+        'point':        float,
+        'tickSize':     float,
+        'contractSize': float,
+        'lotStep':      float,
+        'minLot':       float,
+        'maxLot':       float,
+        'minStop':      int,
+        'freezeLvl':    int,
+        'spread':       int
     }
 
     def description(self) -> str:
@@ -24,8 +24,8 @@ class GetInstrument(Response):
     def base_currency(self) -> str:
         return self['bcurrency']
 
-    def profit_currency(self) -> str:
-        return self['pcurrency']
+    def quote_currency(self) -> str:
+        return self['qcurrency']
 
     def margin_currency(self) -> str:
         return self['mcurrency']
@@ -37,25 +37,25 @@ class GetInstrument(Response):
         return self['point']
 
     def tick_size(self) -> float:
-        return self['ticksz']
+        return self['tickSize']
 
     def contract_size(self) -> float:
-        return self['contractsz']
+        return self['contractSize']
 
     def lot_step(self) -> float:
-        return self['lotstep']
+        return self['lotStep']
 
     def min_lot(self) -> float:
-        return self['minlot']
+        return self['minLot']
 
     def max_lot(self) -> float:
-        return self['maxlot']
+        return self['maxLot']
 
     def min_stop_level(self) -> int:
-        return self['minstop']
+        return self['minStop']
 
     def freeze_level(self) -> int:
-        return self['freezelvl']
+        return self['freezeLvl']
 
     def spread(self) -> int:
         return self['spread']

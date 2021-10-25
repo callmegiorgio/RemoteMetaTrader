@@ -2,57 +2,54 @@
 
 // Local
 #include "../../Utility/JsonWriter.mqh"
-#include "../../Utility/Optional.mqh"
 
 /// Response:
 /// {
-///   "desc":       ?string,
-///   "bcurrency":  ?string,
-///   "pcurrency":  ?string,
-///   "mcurrency":  ?string,
-///   "ndecimals":  integer,
-///   "point":      double,
-///   "ticksz":     double,
-///   "contractsz": double,
-///   "lotstep":    double,
-///   "minlot":     double,
-///   "maxlot":     double,
-///   "minstop":    integer,
-///   "freezelvl":  integer,
-///   "spread":     integer
+///   "desc":         ?string,
+///   "bcurrency":    ?string,
+///   "qcurrency":    ?string,
+///   "mcurrency":    ?string,
+///   "ndecimals":    integer,
+///   "point":        double,
+///   "tickSize":     double,
+///   "contractSize": double,
+///   "lotStep":      double,
+///   "minLot":       double,
+///   "maxLot":       double,
+///   "minStop":      integer,
+///   "freezeLvl":    integer,
+///   "spread":       integer
 /// }
 class GetInstrumentResponse {
 public:
-    void write(JsonWriter& writer) const
+    GetInstrumentResponse()
     {
-        writer.write("desc",       this.description);
-        writer.write("bcurrency",  this.base_currency);
-        writer.write("pcurrency",  this.profit_currency);
-        writer.write("mcurrency",  this.margin_currency);
-        writer.write("ndecimals",  this.decimal_places);
-        writer.write("point",      this.point);
-        writer.write("ticksz",     this.tick_size);
-        writer.write("contractsz", this.contract_size);
-        writer.write("lotstep",    this.lot_step);
-        writer.write("minlot",     this.min_lot);
-        writer.write("maxlot",     this.max_lot);
-        writer.write("minstop",    this.min_stop_level);
-        writer.write("freezelvl",  this.freeze_level);
-        writer.write("spread",     this.spread);
+        instrument = NULL;
     }
 
-    Optional<string> description;
-    Optional<string> base_currency;
-    Optional<string> profit_currency;
-    Optional<string> margin_currency;
-    long             decimal_places;
-    double           point;
-    double           tick_size;
-    double           contract_size;
-    double           lot_step;
-    double           min_lot;
-    double           max_lot;
-    long             min_stop_level;
-    long             freeze_level;
-    long             spread;
+    ~GetInstrumentResponse()
+    {
+        if (instrument != NULL)
+            delete instrument;
+    }
+
+    void write(JsonWriter& writer) const
+    {
+        writer.write("desc",         instrument.description());
+        writer.write("bcurrency",    instrument.base_currency());
+        writer.write("qcurrency",    instrument.quote_currency());
+        writer.write("mcurrency",    instrument.margin_currency());
+        writer.write("ndecimals",    instrument.decimal_places());
+        writer.write("point",        instrument.point());
+        writer.write("tickSize",     instrument.tick_size());
+        writer.write("contractSize", instrument.contract_size());
+        writer.write("lotStep",      instrument.lot_step());
+        writer.write("minLot",       instrument.min_lot());
+        writer.write("maxLot",       instrument.max_lot());
+        writer.write("minStop",      instrument.stop_level());
+        writer.write("freezeLvl",    instrument.freeze_level());
+        writer.write("spread",       instrument.spread());
+    }
+
+    Instrument* instrument;
 };

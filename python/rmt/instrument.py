@@ -12,7 +12,7 @@ class Instrument(SlottedClass):
         '_symbol',
         '_description',
         '_base_currency',
-        '_profit_currency',
+        '_quote_currency',
         '_margin_currency',
         '_decimal_places',
         '_point',
@@ -30,7 +30,7 @@ class Instrument(SlottedClass):
                  symbol: str,
                  description: str,
                  base_currency: str,
-                 profit_currency: str,
+                 quote_currency: str,
                  margin_currency: str,
                  decimal_places: int,
                  point: float,
@@ -46,7 +46,7 @@ class Instrument(SlottedClass):
         self._symbol          = symbol
         self._description     = description
         self._base_currency   = base_currency
-        self._profit_currency = profit_currency
+        self._quote_currency  = quote_currency
         self._margin_currency = margin_currency
         self._decimal_places  = decimal_places
         self._point           = point
@@ -81,13 +81,13 @@ class Instrument(SlottedClass):
     def profit_currency(self) -> str:
         """Same as `quote_currency`."""
 
-        return self._profit_currency
+        return self._quote_currency
 
     @property
     def quote_currency(self) -> str:
         """Quote currency of this instrument."""
 
-        return self._profit_currency
+        return self._quote_currency
 
     @property
     def margin_currency(self) -> str:

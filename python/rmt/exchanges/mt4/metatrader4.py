@@ -140,7 +140,7 @@ class MetaTrader4(Exchange):
                 symbol          = symbol,
                 description     = response.description(),
                 base_currency   = response.base_currency(),
-                profit_currency = response.profit_currency(),
+                quote_currency  = response.quote_currency(),
                 margin_currency = response.margin_currency(),
                 decimal_places  = response.decimal_places(),
                 point           = response.point(),
