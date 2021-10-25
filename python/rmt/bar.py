@@ -18,7 +18,7 @@ class Bar(SlottedClass):
                  high:   float,
                  low:    float,
                  close:  float,
-                 volume: int = 0
+                 volume: int
     ):
         self._time   = time
         self._open   = float(open)

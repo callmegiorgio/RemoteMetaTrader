@@ -208,7 +208,7 @@ class MetaTrader4(Exchange):
                 high   = response.high(i),
                 low    = response.low(i),
                 close  = response.close(i),
-                volume = 0, #TODO: volume = response.volume(i)
+                volume = response.volume(i)
             )
 
             bars.append(bar)

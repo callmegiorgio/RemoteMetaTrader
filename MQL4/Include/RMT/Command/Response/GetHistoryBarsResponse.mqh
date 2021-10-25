@@ -5,8 +5,8 @@
 
 /// Response:
 /// [
-///   [datetime, double, double, double, double],
-///   [datetime, double, double, double, double],
+///   [datetime, double, double, double, double, integer],
+///   [datetime, double, double, double, double, integer],
 ///   ...
 /// ]
 class GetHistoryBarsResponse {
@@ -22,6 +22,7 @@ public:
             bar.write(2, this.rates[i].high);
             bar.write(3, this.rates[i].low);
             bar.write(4, this.rates[i].close);
+            bar.write(5, this.rates[i].tick_volume);
         }
     }
 
