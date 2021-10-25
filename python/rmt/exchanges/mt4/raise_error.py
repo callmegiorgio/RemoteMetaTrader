@@ -1,5 +1,5 @@
 from typing    import Callable, Dict, NoReturn, Optional
-from rmt       import jsonutil, OrderStatus
+from rmt       import JsonModel
 from rmt.error import RequestError, ExecutionError, InvalidOrderStatus
 from .         import CommandResultCode, Content
 
@@ -21,52 +21,71 @@ class MQL4Error(ExecutionError):
         return self._code
 
 def _raise_invalid_request(command: str, content: Dict) -> NoReturn:
-    raise RequestError("Invalid request (command was '%s')" % command)
+    raise RequestError("Invalid request (command was '{}')".format(command))
 
 def _raise_unknown_request_command(command: str, content: Dict) -> NoReturn:
-    raise RequestError("Server does not recognize command '%s'" % command)
+    raise RequestError("Server does not recognize command '{}'".format(command))
 
 def _raise_invalid_json(command: str, content: Dict) -> NoReturn:
-    raise RequestError("Request content at command '%s' is not valid JSON" % command)
+    raise RequestError("Request content at command '{}' is not valid JSON".format(command))
 
 def _raise_missing_json_key(command: str, content: Dict) -> NoReturn:
-    key = jsonutil.read_optional(content, 'key', str, '?')
+    model = JsonModel({'key': (str, '?')}, content)
+    
+    key = model['key']
 
-    raise RequestError("Missing JSON key '%s' at command '%s'" % (key, command))
+    raise RequestError("Missing JSON key '{0}' at command '{1}'".format(key, command))
 
 def _raise_missing_json_index(command: str, content: Dict) -> NoReturn:
-    index = jsonutil.read_optional(content, 'index', int, '?')
+    model = JsonModel({'index': (int, '?')})
 
-    raise RequestError("Missing JSON index %s at command '%s'" % (index, command))
+    index = model['index']
+
+    raise RequestError("Missing JSON index {0} at command '{1}'".format(index, command))
 
 def _raise_invalid_json_key_type(command: str, content: Dict) -> NoReturn:
-    key           = jsonutil.read_optional(content, 'key',      str, '?')
-    actual_type   = jsonutil.read_optional(content, 'actual',   str, '?')
-    expected_type = jsonutil.read_optional(content, 'expected', str, '?')
+    model = JsonModel(
+        {
+            'key':      (str, '?'),
+            'actual':   (str, '?'),
+            'expected': (str, '?')
+        },
+        content
+    )
+
+    key           = model['key']
+    actual_type   = model['actual']
+    expected_type = model['expected']
 
     raise RequestError(
-        "JSON key '%s' at command '%s' has invalid type (expected: %s, got: %s)"
-        % (key, command, expected_type, actual_type)
+        "JSON key '{0}' at command '{1}' has invalid type (expected: {2}, got: {3})"
+        .format(key, command, expected_type, actual_type)
     )
 
 def _raise_invalid_json_index_type(command: str, content: Dict) -> NoReturn:
-    index         = jsonutil.read_optional(content, 'index',    int, '?')
-    actual_type   = jsonutil.read_optional(content, 'actual',   str, '?')
-    expected_type = jsonutil.read_optional(content, 'expected', str, '?')
+    model = JsonModel(
+        {
+            'index':    (int, '?'),
+            'actual':   (str, '?'),
+            'expected': (str, '?')
+        },
+        content
+    )
+
+    index         = model['index']
+    actual_type   = model['actual']
+    expected_type = model['expected']
 
     raise RequestError(
-        "JSON index %s at command '%s' has invalid type (expected: %s, got: %s)"
-        % (index, command, expected_type, actual_type)
+        "JSON index {0} at command '{1}' has invalid type (expected: {2}, got: {3})"
+        .format(index, command, expected_type, actual_type)
     )
 
 def _raise_invalid_order_status(command: str, content: Dict) -> NoReturn:
-    actual_status   = jsonutil.read_optional(content, 'actual', str)
-    #expected_status = jsonutil.read_optional(content, 'expected', str, '?')
+    model = JsonModel({'actual': (str, '')}, content)
 
-    valid_statuses = [s.name.lower().replace('_', ' ') for s in OrderStatus]
-
-    if actual_status not in valid_statuses:
-        actual_status = '?'
+    actual_status = model['actual']
+    #TODO: expected_status
 
     raise InvalidOrderStatus(actual_status)
 
@@ -87,7 +106,7 @@ def raise_error(command: str, result_code: CommandResultCode, content: Content) 
     is_valid_result_code = any(v == result_code for v in CommandResultCode)  
 
     if not is_valid_result_code:
-        raise RequestError("request failed by unknown error %s" % result_code)
+        raise RequestError("request failed by unknown error {}".format(result_code))
 
     if result_code in _raise_function_table:
         raise_function = _raise_function_table[result_code]
