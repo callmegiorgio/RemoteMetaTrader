@@ -2,6 +2,7 @@ from .request           import Request
 from .get_account       import GetAccountRequest
 from .get_tick          import GetTickRequest
 from .get_instrument    import GetInstrumentRequest
+from .get_instruments   import GetInstrumentsRequest
 from .get_bar           import GetBarRequest
 from .get_history_bars  import GetHistoryBarsRequest
 from .get_exchange_rate import GetExchangeRateRequest

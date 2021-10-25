@@ -7,6 +7,7 @@
 #include "GetExchangeRateResponse.mqh"
 #include "GetHistoryBarsResponse.mqh"
 #include "GetInstrumentResponse.mqh"
+#include "GetInstrumentsResponse.mqh"
 #include "GetOrderResponse.mqh"
 #include "GetTickResponse.mqh"
 #include "PlaceOrderResponse.mqh"

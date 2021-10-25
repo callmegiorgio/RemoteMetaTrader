@@ -15,7 +15,8 @@ public:
     CommandExecutor(InstrumentEventSubject& instrument_event_subject);
 
 private:
-    CommandResult execute(GetAccountResponse& response) override;
+    CommandResult execute(GetAccountResponse&     response) override;
+    CommandResult execute(GetInstrumentsResponse& response) override;
 
     CommandResult execute(const WatchSymbolRequest& request) override;
     CommandResult execute(const ModifyOrderRequest& request) override;
@@ -60,6 +61,23 @@ CommandResult CommandExecutor::execute(GetAccountResponse& response) override
     response.margin_level   = AccountInfoDouble (ACCOUNT_MARGIN_LEVEL);
     response.trade_allowed  = AccountInfoInteger(ACCOUNT_TRADE_ALLOWED) == 1;
     response.expert_allowed = AccountInfoInteger(ACCOUNT_TRADE_EXPERT)  == 1;
+
+    return CommandResult::SUCCESS;
+}
+
+CommandResult CommandExecutor::execute(GetInstrumentsResponse& response) override
+{
+    if (IsTesting())
+    {
+        response.instruments.push(new Instrument(Symbol()));
+    }
+    else
+    {
+        const int symbol_count = SymbolsTotal(false);
+
+        for (int i = 0; i < symbol_count; i++)
+            response.instruments.push(new Instrument(SymbolName(i, false)));
+    }
 
     return CommandResult::SUCCESS;
 }

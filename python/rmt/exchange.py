@@ -180,6 +180,11 @@ class Exchange(QObject):
 
         raise error.NotImplementedException(self.__class__, 'get_instrument')
 
+    def get_instruments(self) -> List[Instrument]:
+        """Retrieves all instruments on this exchange."""
+
+        raise error.NotImplementedException(self.__class__, 'get_instruments')
+
     def get_bar(self,
                 symbol: str,
                 index: int = 0,

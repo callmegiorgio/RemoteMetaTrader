@@ -67,7 +67,8 @@ protected:
     //==============================================================================
     // Response-only commands.
     //==============================================================================
-    virtual CommandResult execute(GetAccountResponse& response) = 0;
+    virtual CommandResult execute(GetAccountResponse&     response) = 0;
+    virtual CommandResult execute(GetInstrumentsResponse& response) = 0;
 
     //==============================================================================
     // Request-only commands.
@@ -172,7 +173,8 @@ static CommandResult CommandDispatcher::execute_request_response_command(Command
 
 CommandDispatcher::CommandDispatcher()
 {
-    register_response_only_command<GetAccountResponse>("getAccount");
+    register_response_only_command<GetAccountResponse    >("getAccount");
+    register_response_only_command<GetInstrumentsResponse>("getInstruments");
 
     register_request_only_command<WatchSymbolRequest>("watchSymbol");
     register_request_only_command<ModifyOrderRequest>("modifyOrder");

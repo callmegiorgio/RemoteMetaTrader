@@ -158,6 +158,37 @@ class MetaTrader4(Exchange):
 
         return self._instruments[symbol]
     
+    def get_instruments(self) -> List[Instrument]:
+        request  = requests.GetInstrumentsRequest()
+        response = responses.GetInstruments(self._send_request(request))
+
+        instrument_count = response.instrument_count()
+
+        for i in range(instrument_count):
+            symbol = response.symbol(i)
+
+            instrument = Instrument(
+                symbol          = symbol,
+                description     = response.description(i),
+                base_currency   = response.base_currency(i),
+                quote_currency  = response.quote_currency(i),
+                margin_currency = response.margin_currency(i),
+                decimal_places  = response.decimal_places(i),
+                point           = response.point(i),
+                tick_size       = response.tick_size(i),
+                contract_size   = response.contract_size(i),
+                lot_step        = response.lot_step(i),
+                min_lot         = response.min_lot(i),
+                max_lot         = response.max_lot(i),
+                min_stop_level  = response.min_stop_level(i),
+                freeze_level    = response.freeze_level(i),
+                spread          = response.spread(i)
+            )
+
+            self._instruments[symbol] = instrument
+
+        return self._instruments.copy().values()
+
     def get_history_bars(self,
                          symbol: str,
                          start_time: Optional[datetime] = None,
