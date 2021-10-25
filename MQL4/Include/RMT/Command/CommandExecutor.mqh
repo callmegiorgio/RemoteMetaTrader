@@ -5,6 +5,7 @@
 
 // Local
 #include "../Event/InstrumentEventSubject.mqh"
+#include "../Trading/Account.mqh"
 #include "../Trading/get_exchange_rate.mqh"
 #include "../Trading/Tick.mqh"
 #include "CommandDispatcher.mqh"
@@ -44,23 +45,26 @@ CommandExecutor::CommandExecutor(InstrumentEventSubject& instrument_event_subjec
 
 CommandResult CommandExecutor::execute(GetAccountResponse& response) override
 {
-    response.login          = AccountInfoInteger(ACCOUNT_LOGIN);
-    response.name           = AccountInfoString (ACCOUNT_NAME);
-    response.server         = AccountInfoString (ACCOUNT_SERVER);
-    response.company        = AccountInfoString (ACCOUNT_COMPANY);
-    response.mode           = ENUM_ACCOUNT_TRADE_MODE(AccountInfoInteger(ACCOUNT_TRADE_MODE));
-    response.leverage       = AccountInfoInteger(ACCOUNT_LEVERAGE);
-    response.order_limit    = int(AccountInfoInteger(ACCOUNT_LIMIT_ORDERS));
-    response.currency       = AccountInfoString (ACCOUNT_CURRENCY);
-    response.balance        = AccountInfoDouble (ACCOUNT_BALANCE);
-    response.credit         = AccountInfoDouble (ACCOUNT_CREDIT);
-    response.profit         = AccountInfoDouble (ACCOUNT_PROFIT);
-    response.equity         = AccountInfoDouble (ACCOUNT_EQUITY);
-    response.margin         = AccountInfoDouble (ACCOUNT_EQUITY);
-    response.free_margin    = AccountInfoDouble (ACCOUNT_MARGIN_FREE);
-    response.margin_level   = AccountInfoDouble (ACCOUNT_MARGIN_LEVEL);
-    response.trade_allowed  = AccountInfoInteger(ACCOUNT_TRADE_ALLOWED) == 1;
-    response.expert_allowed = AccountInfoInteger(ACCOUNT_TRADE_EXPERT)  == 1;
+    response.login             = Account::login();
+    response.name              = Account::name();
+    response.server            = Account::server();
+    response.company           = Account::company();
+    response.trade_mode        = Account::trade_mode();
+    response.margin_mode       = Account::margin_mode();
+    response.leverage          = Account::leverage();
+    response.order_limit       = Account::max_active_orders();
+    response.currency          = Account::currency();
+    response.balance           = Account::balance();
+    response.credit            = Account::credit();
+    response.profit            = Account::profit();
+    response.equity            = Account::equity();
+    response.margin            = Account::margin();
+    response.free_margin       = Account::free_margin();
+    response.margin_level      = Account::margin_level();
+    response.margin_call_level = Account::margin_call_level();
+    response.margin_stop_level = Account::margin_stop_out_level();
+    response.trade_allowed     = Account::is_trade_allowed();
+    response.expert_allowed    = Account::is_expert_allowed();
 
     return CommandResult::SUCCESS;
 }

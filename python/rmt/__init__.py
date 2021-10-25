@@ -2,7 +2,7 @@ from .slotted_class import SlottedClass
 from .json_model    import JsonModel, JsonModelError
 from .              import predicate
 from .predicate     import Predicate, TimePredicate
-from .account       import Account, TradeMode
+from .account       import Account, TradeMode, MarginMode
 from .tick          import Tick, read_ticks_from_csv
 from .instrument    import Instrument
 from .order         import Side, OrderType, OrderStatus, Order

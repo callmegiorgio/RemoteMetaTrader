@@ -6,6 +6,10 @@ class TradeMode(Enum):
     REAL    = 'real'
     CONTEST = 'contest'
 
+class MarginMode(Enum):
+    PERCENT = 'percent'
+    MONEY   = 'money'
+
 class Account(SlottedClass):
     """Stores information about a trading account."""
 
@@ -14,7 +18,8 @@ class Account(SlottedClass):
         '_name',
         '_server',
         '_company',
-        '_mode',
+        '_trade_mode',
+        '_margin_mode',
         '_leverage',
         '_order_limit',
         '_currency',
@@ -25,6 +30,8 @@ class Account(SlottedClass):
         '_margin',
         '_free_margin',
         '_margin_level',
+        '_margin_call_level',
+        '_margin_stop_level',
         '_trade_allowed',
         '_expert_allowed'
     ]
@@ -34,7 +41,8 @@ class Account(SlottedClass):
                  name: str,
                  server: str,
                  company: str,
-                 mode: TradeMode,
+                 trade_mode: TradeMode,
+                 margin_mode: MarginMode,
                  leverage: int,
                  order_limit: int,
                  currency: str,
@@ -45,26 +53,31 @@ class Account(SlottedClass):
                  margin: float,
                  free_margin: float,
                  margin_level: float,
+                 margin_call_level: float,
+                 margin_stop_out_level: float,
                  trade_allowed: bool,
                  expert_allowed: bool
     ):
-        self._login          = int(login)
-        self._name           = str(name)
-        self._server         = str(server)
-        self._company        = str(company)
-        self._mode           = TradeMode(mode)
-        self._leverage       = int(leverage)
-        self._order_limit    = int(order_limit)
-        self._currency       = str(currency)
-        self._balance        = float(balance)
-        self._credit         = float(credit)
-        self._profit         = float(profit)
-        self._equity         = float(equity)
-        self._margin         = float(margin)
-        self._free_margin    = float(free_margin)
-        self._margin_level   = float(margin_level)
-        self._trade_allowed  = bool(trade_allowed)
-        self._expert_allowed = bool(expert_allowed)
+        self._login             = int(login)
+        self._name              = str(name)
+        self._server            = str(server)
+        self._company           = str(company)
+        self._trade_mode        = TradeMode(trade_mode)
+        self._margin_mode       = MarginMode(margin_mode)
+        self._leverage          = int(leverage)
+        self._order_limit       = int(order_limit)
+        self._currency          = str(currency)
+        self._balance           = float(balance)
+        self._credit            = float(credit)
+        self._profit            = float(profit)
+        self._equity            = float(equity)
+        self._margin            = float(margin)
+        self._free_margin       = float(free_margin)
+        self._margin_level      = float(margin_level)
+        self._margin_call_level = float(margin_call_level)
+        self._margin_stop_level = float(margin_stop_out_level)
+        self._trade_allowed     = bool(trade_allowed)
+        self._expert_allowed    = bool(expert_allowed)
 
     @property
     def login(self) -> int:
@@ -83,8 +96,12 @@ class Account(SlottedClass):
         return self._company
 
     @property
-    def mode(self) -> TradeMode:
-        return self._mode
+    def trade_mode(self) -> TradeMode:
+        return self._trade_mode
+
+    @property
+    def margin_mode(self) -> MarginMode:
+        return self._margin_mode
 
     @property
     def leverage(self) -> int:
@@ -125,6 +142,14 @@ class Account(SlottedClass):
     @property
     def margin_level(self) -> float:
         return self._margin_level
+
+    @property
+    def margin_call_level(self) -> float:
+        return self._margin_call_level
+
+    @property
+    def margin_stop_out_level(self) -> float:
+        return self._margin_stop_level
 
     @property
     def is_trade_allowed(self) -> bool:

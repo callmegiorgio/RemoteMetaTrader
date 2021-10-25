@@ -8,7 +8,7 @@ from time     import sleep
 from rmt      import (
     Order, Side, OrderType, Exchange, Tick,
     Bar, OrderStatus, Timeframe, Instrument,
-    Account, TradeMode
+    Account, TradeMode, MarginMode
 )
 from . import *
 
@@ -646,23 +646,26 @@ class MetaTrader4(Exchange):
         response = responses.GetAccount(self._send_request(request))
 
         account = Account(
-            login          = response.login(),
-            name           = response.name(),
-            server         = response.server(),
-            company        = response.company(),
-            mode           = TradeMode(response.mode()),
-            leverage       = response.leverage(),
-            order_limit    = response.order_limit(),
-            currency       = response.currency(),
-            balance        = response.balance(),
-            credit         = response.credit(),
-            profit         = response.profit(),
-            equity         = response.equity(),
-            margin         = response.margin(),
-            free_margin    = response.free_margin(),
-            margin_level   = response.margin_level(),
-            trade_allowed  = response.is_trade_allowed(),
-            expert_allowed = response.is_expert_allowed()
+            login                 = response.login(),
+            name                  = response.name(),
+            server                = response.server(),
+            company               = response.company(),
+            trade_mode            = TradeMode(response.trade_mode()),
+            margin_mode           = MarginMode(response.margin_mode()),
+            leverage              = response.leverage(),
+            order_limit           = response.order_limit(),
+            currency              = response.currency(),
+            balance               = response.balance(),
+            credit                = response.credit(),
+            profit                = response.profit(),
+            equity                = response.equity(),
+            margin                = response.margin(),
+            free_margin           = response.free_margin(),
+            margin_level          = response.margin_level(),
+            margin_call_level     = response.margin_call_level(),
+            margin_stop_out_level = response.margin_stop_out_level(),
+            trade_allowed         = response.is_trade_allowed(),
+            expert_allowed        = response.is_expert_allowed()
         )
 
         return account

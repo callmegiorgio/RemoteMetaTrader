@@ -13,7 +13,7 @@ public:
     static bool is_expert_allowed();
     
     static ENUM_ACCOUNT_TRADE_MODE trade_mode();
-    static ENUM_ACCOUNT_STOPOUT_MODE stop_out_mode();
+    static ENUM_ACCOUNT_STOPOUT_MODE margin_mode();
 
     static double balance();
     static double credit();
@@ -79,7 +79,7 @@ static ENUM_ACCOUNT_TRADE_MODE Account::trade_mode()
     return ENUM_ACCOUNT_TRADE_MODE(AccountInfoInteger(ACCOUNT_TRADE_MODE));
 }
 
-static ENUM_ACCOUNT_STOPOUT_MODE Account::stop_out_mode()
+static ENUM_ACCOUNT_STOPOUT_MODE Account::margin_mode()
 {
     return ENUM_ACCOUNT_STOPOUT_MODE(AccountInfoInteger(ACCOUNT_MARGIN_SO_MODE));
 }
