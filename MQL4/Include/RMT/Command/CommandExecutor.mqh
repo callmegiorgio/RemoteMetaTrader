@@ -81,40 +81,10 @@ CommandResult CommandExecutor::execute(const GetTickRequest& request, GetTickRes
 
 CommandResult CommandExecutor::execute(const GetInstrumentRequest& request, GetInstrumentResponse& response) override
 {
-    const string symbol = request.symbol;
+    response.instrument = new Instrument(request.symbol);
 
-    long is_floating_spread;
-
-    // Integer properties.
-    if (!SymbolInfoInteger(symbol, SYMBOL_DIGITS,             response.decimal_places)) return GetLastError();
-    if (!SymbolInfoInteger(symbol, SYMBOL_TRADE_STOPS_LEVEL,  response.min_stop_level)) return GetLastError();
-    if (!SymbolInfoInteger(symbol, SYMBOL_TRADE_FREEZE_LEVEL, response.freeze_level))   return GetLastError();
-    if (!SymbolInfoInteger(symbol, SYMBOL_SPREAD_FLOAT,       is_floating_spread))      return GetLastError();
-
-    if (bool(is_floating_spread))
-    {
-        // Spread is floating, so set spread value to 0.
-        response.spread = 0;
-    }
-    else if (!SymbolInfoInteger(symbol, SYMBOL_SPREAD, response.spread))
-    {
-        // Spread is fixed, but call failed to retrieve its value.
+    if (!response.instrument.is_complete())
         return GetLastError();
-    }
-
-    /// Double properties.
-    if (!SymbolInfoDouble(symbol, SYMBOL_POINT,               response.point))         return GetLastError();
-    if (!SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE,     response.tick_size))     return GetLastError();
-    if (!SymbolInfoDouble(symbol, SYMBOL_TRADE_CONTRACT_SIZE, response.contract_size)) return GetLastError();
-    if (!SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP,         response.lot_step))      return GetLastError();
-    if (!SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN,          response.min_lot))       return GetLastError();
-    if (!SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX,          response.max_lot))       return GetLastError();
-
-    string s;
-    if (SymbolInfoString(symbol, SYMBOL_DESCRIPTION, s))     response.description     = s;
-    if (SymbolInfoString(symbol, SYMBOL_CURRENCY_BASE, s))   response.base_currency   = s;
-    if (SymbolInfoString(symbol, SYMBOL_CURRENCY_PROFIT, s)) response.profit_currency = s;
-    if (SymbolInfoString(symbol, SYMBOL_CURRENCY_MARGIN, s)) response.margin_currency = s;
 
     return CommandResult::SUCCESS;
 }
