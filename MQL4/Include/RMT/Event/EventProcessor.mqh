@@ -58,8 +58,8 @@ EventProcessor::EventProcessor(Server& the_server)
 void EventProcessor::process_events()
 {
     m_instrument_ev_sub.update();
-    m_order_ev_sub.update();
     m_account_ev_sub.update();
+    m_order_ev_sub.update();
 }
 
 AccountEventSubject* EventProcessor::account_event_subject()
