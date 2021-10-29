@@ -221,12 +221,13 @@ CommandResult CommandExecutor::execute(const PlaceOrderRequest& request, PlaceOr
     // Client didn't give us a price, so we'll be getting current quotes instead.
     const bool should_get_market_price = (request.price.has_value() == false);
 
+    const int      opcode       = request.opcode;
     const int      slippage     = request.slippage.value_or(0);
     const double   stop_loss    = request.stop_loss.value_or(0);
     const double   take_profit  = request.take_profit.value_or(0);
     const string   comment      = request.comment.value_or("");
     const int      magic_number = request.magic_number.value_or(0);
-    const datetime expiration   = request.expiration.value_or(0);
+    const datetime expiration   = ((opcode == OP_BUY) || (opcode == OP_SELL)) ? 0 : request.expiration.value_or(0);
 
     double price = request.price.value_or(0);
 
@@ -264,7 +265,7 @@ CommandResult CommandExecutor::execute(const PlaceOrderRequest& request, PlaceOr
         const int ticket =
             OrderSend(
                 request.symbol,
-                request.opcode,
+                opcode,
                 request.lots,
                 price,
                 slippage,
