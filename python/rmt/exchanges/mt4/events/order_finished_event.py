@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing   import Optional
 from .        import Event
 
 class OrderFinishedEvent(Event):
@@ -7,13 +8,13 @@ class OrderFinishedEvent(Event):
         'opcode':     int,
         'cp':         float,
         'ct':         int,
-        'sl':         float,
-        'tp':         float,
-        'expiration': int,
-        'comment':    (str, ''),
-        'commission': float,
-        'profit':     float,
-        'swap':       float
+        'sl':         (float, None),
+        'tp':         (float, None),
+        'expiration': (int,   None),
+        'comment':    (str,   ''),
+        'commission': (float, 0.0),
+        'profit':     (float, 0.0),
+        'swap':       (float, 0.0)
     }
 
     def ticket(self) -> int:
@@ -28,14 +29,19 @@ class OrderFinishedEvent(Event):
     def close_time(self) -> datetime:
         return datetime.fromtimestamp(self['ct'], timezone.utc)
 
-    def stop_loss(self) -> float:
+    def stop_loss(self) -> Optional[float]:
         return self['sl']
 
-    def take_profit(self) -> float:
+    def take_profit(self) -> Optional[float]:
         return self['tp']
 
-    def expiration(self) -> datetime:
-        return datetime.fromtimestamp(self['expiration'], timezone.utc)
+    def expiration(self) -> Optional[datetime]:
+        expiration = self['expiration']
+
+        if expiration is not None:
+            expiration = datetime.fromtimestamp(expiration, timezone.utc)
+
+        return expiration
 
     def comment(self) -> str:
         return self['comment']
