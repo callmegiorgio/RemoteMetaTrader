@@ -1,9 +1,10 @@
 import rmt
-from datetime     import datetime, timedelta
+from datetime     import datetime
 from typing       import Optional, Set
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from rmt          import (
-    Exchange, Tick, Bar, Performance, Instrument, Order, Timeframe
+    Exchange, Tick, Bar, Performance, Instrument,
+    Timeframe, Order, Side, OrderType
 )
 
 class Strategy(QObject):
@@ -150,22 +151,59 @@ class Strategy(QObject):
 
         raise rmt.error.InvalidTicket(ticket)
 
-    def place_order(self, **kwargs) -> int:
-        kwargs.setdefault('symbol', self.instrument.symbol)
+    def place_order(self,
+                    side:         Side,
+                    order_type:   OrderType,
+                    lots:         float,
+                    price:        Optional[float] = None,
+                    slippage:     Optional[int]   = None,
+                    stop_loss:    Optional[float] = None,
+                    take_profit:  Optional[float] = None,
+                    comment:      str = '',
+                    magic_number: int = 0,
+                    expiration:   Optional[datetime] = None,
+                    symbol:       Optional[str]      = None
+    ) -> int:
+        if symbol is None:
+            symbol = self.instrument.symbol
 
-        ticket = self._exchange.place_order(**kwargs)
+        ticket = self._exchange.place_order(
+            side         = side,
+            order_type   = order_type,
+            lots         = lots,
+            price        = price,
+            slippage     = slippage,
+            stop_loss    = stop_loss,
+            take_profit  = take_profit,
+            symbol       = symbol,
+            comment      = comment,
+            magic_number = magic_number,
+            expiration   = expiration
+        )
 
         self._active_orders.add(ticket)
 
         return ticket
 
-    def modify_order(self, ticket: int, **kwargs):
+    def modify_order(self,
+                     ticket: int,
+                     stop_loss:   Optional[float]    = None,
+                     take_profit: Optional[float]    = None,
+                     price:       Optional[float]    = None,
+                     expiration:  Optional[datetime] = None
+    ) -> None:
         if ticket not in self._active_orders:
             raise rmt.error.InvalidTicket(ticket)
         
-        self._exchange.modify_order(ticket=ticket, **kwargs)
+        self._exchange.modify_order(
+            ticket      = ticket,
+            stop_loss   = stop_loss,
+            take_profit = take_profit,
+            price       = price,
+            expiration  = expiration
+        )
 
-    def cancel_order(self, ticket: int):
+    def cancel_order(self, ticket: int) -> None:
         if ticket not in self._active_orders:
             raise rmt.error.InvalidTicket(ticket)
 
@@ -174,11 +212,21 @@ class Strategy(QObject):
         self._active_orders.remove(ticket)
         self._history_orders.add(ticket)
 
-    def close_order(self, ticket: int, **kwargs) -> int:
+    def close_order(self,
+                    ticket:   int,
+                    price:    Optional[float] = None,
+                    slippage: int             = 0,
+                    lots:     Optional[float] = None
+    ) -> int:
         if ticket not in self._active_orders:
             raise rmt.error.InvalidTicket(ticket)
 
-        new_ticket = self._exchange.close_order(ticket, **kwargs)
+        new_ticket = self._exchange.close_order(
+            ticket   = ticket,
+            price    = price,
+            slippage = slippage,
+            lots     = lots
+        )
 
         self._active_orders.remove(ticket)
 
@@ -211,8 +259,6 @@ class Strategy(QObject):
     @pyqtSlot(int)
     def _notify_order_opened(self, ticket: int):
         if ticket in self._active_orders:
-            self._active_orders.add(ticket)
-
             self.order_opened.emit(ticket)
 
     @pyqtSlot(int)
