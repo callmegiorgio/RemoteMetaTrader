@@ -75,7 +75,7 @@ void AccountEventSubject::update()
         m_account_changed_ev_sub.notify(ev);
     }
 
-    if (m_equity != Account::equity())
+    if ((m_equity != Account::equity()) || (m_balance != Account::balance()))
     {
         EquityUpdatedEvent ev;
         ev.equity = m_equity = Account::equity();
