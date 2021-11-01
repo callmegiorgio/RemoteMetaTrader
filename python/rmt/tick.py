@@ -28,6 +28,9 @@ class Tick(SlottedClass):
     def ask(self) -> float:
         return self._ask
 
+    def spread(self) -> float:
+        return abs(self.bid - self.ask)
+
     def items(self) -> Tuple[datetime, float, float]:
         return (self.server_time, self.bid, self.ask)
 
