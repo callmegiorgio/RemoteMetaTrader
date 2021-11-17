@@ -313,10 +313,10 @@ class TrailingStopStrategy(Strategy):
         if (policy & TrailingStopPolicy.NO_COMMISSION) and (order.commission() != 0):
             commission_price = abs(order.commission())
 
-            if self.instrument.quote_currency != self._exchange.account.currency:
-                rate = self._exchange.get_exchange_rate(
+            if self.instrument.quote_currency != self.account.currency:
+                rate = self.get_exchange_rate(
                     self.instrument.quote_currency,
-                    self._exchange.account.currency
+                    self.account.currency
                 )
 
                 commission_price *= rate

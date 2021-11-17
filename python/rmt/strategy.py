@@ -3,7 +3,7 @@ from datetime     import datetime
 from typing       import Optional, Set
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from rmt          import (
-    Exchange, Tick, Bar, Performance, Instrument,
+    Exchange, Tick, Bar, Performance, Instrument, Account,
     Timeframe, Order, Side, OrderType
 )
 
@@ -83,6 +83,10 @@ class Strategy(QObject):
         self._exchange.order_closed.connect(self._notify_order_closed)
 
     @property
+    def account(self) -> Account:
+        return self._exchange.account
+
+    @property
     def instrument(self) -> Instrument:
         """Main instrument traded by this strategy."""
 
@@ -151,6 +155,9 @@ class Strategy(QObject):
             return self._exchange.get_order(ticket)
 
         raise rmt.error.InvalidTicket(ticket)
+
+    def get_exchange_rate(self, base_currency: str, quote_currency: str) -> float:
+        return self._exchange.get_exchange_rate(base_currency=base_currency, quote_currency=quote_currency)
 
     def place_order(self,
                     side:         Side,
