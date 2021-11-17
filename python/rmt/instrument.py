@@ -275,7 +275,9 @@ class Instrument(SlottedClass):
         [`min_lot`, `max_lot`].
         """
 
+        # TODO: find out lot step digits.
+        lots = round(lots, 2)
         lots = int(lots / self.lot_step) * self.lot_step
-        lots = round(lots, 8)
+        lots = round(lots, 2)
 
         return max(min(lots, self.max_lot), self.min_lot)
