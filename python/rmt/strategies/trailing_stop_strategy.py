@@ -1,8 +1,9 @@
+from math   import ceil, floor
 from enum   import IntFlag
 from typing import Dict
 from rmt    import (
-    Strategy, Exchange, Tick, Bar, Order, OrderStatus, Instrument,
-    SlottedClass, error
+    Strategy, Exchange, Tick, Bar, Order, OrderStatus,
+    Side, SlottedClass, error
 )
 
 class TrailingStopPolicy(IntFlag):
@@ -154,9 +155,9 @@ class TrailingStopStrategy(Strategy):
         self.tick_received.connect(self._tick_update_trailing_stops)
         self.bar_closed.connect(self._bar_update_trailing_stops)
 
-        self.order_closed.connect(self._remove_trailing_stop)
-        self.order_canceled.connect(self._remove_trailing_stop)
-        self.order_expired.connect(self._remove_trailing_stop)
+        self.order_closed.connect(self.remove_trailing_stop)
+        self.order_canceled.connect(self.remove_trailing_stop)
+        self.order_expired.connect(self.remove_trailing_stop)
     
     def set_trailing_stop(self, 
                           ticket: int,
@@ -239,12 +240,20 @@ class TrailingStopStrategy(Strategy):
 
         ts_list = self._bar_closed_ts_list if at_bar_close else self._tick_ts_list
 
-        self._remove_trailing_stop(ticket)
+        self.remove_trailing_stop(ticket)
 
         ts_list[ticket] = TrailingStopData(order, stop_loss, trailing_stop, policy)
 
     def remove_trailing_stop(self, ticket: int):
-        del self._trailing_stops[ticket]
+        try:
+            del self._tick_ts_list[ticket]
+        except KeyError:
+            pass
+
+        try:
+            del self._bar_closed_ts_list[ticket]
+        except KeyError:
+            pass
 
     #===============================================================================
     # Internals
@@ -255,7 +264,7 @@ class TrailingStopStrategy(Strategy):
     def _bar_update_trailing_stops(self, bar: Bar):
         # `bar` gives us the bid price, but the ask price may also be needed
         # (if there are sell orders stored).
-        tick = self.get_tick()
+        tick = self.tick
 
         self._update_trailing_stops_in_list(self._bar_closed_ts_list, tick)
 
@@ -302,34 +311,43 @@ class TrailingStopStrategy(Strategy):
                 new_stop_loss = max(new_stop_loss, open_price)
 
         if (policy & TrailingStopPolicy.NO_COMMISSION) and (order.commission() != 0):
-            commission = abs(order.commission())
-            tick_value = self.instrument.tick_value * order.lots()
+            commission_price = abs(order.commission())
 
-            ticks_per_point = self.instrument.tick_size / self.instrument.point
+            if self.instrument.quote_currency != self._exchange.account.currency:
+                rate = self._exchange.get_exchange_rate(
+                    self.instrument.quote_currency,
+                    self._exchange.account.currency
+                )
 
-            commission_point_count = int(commission / tick_value)
-            commission_point_count = max(commission_point_count * ticks_per_point, 1)
+                commission_price *= rate
 
-            commission_coverage_price = commission_point_count * self.instrument.point
-            commission_coverage_price = self.instrument.normalize_price(commission_coverage_price)
-
-            new_stop_loss += commission_coverage_price * side
+            coverage_price_distance = commission_price / order.lots()
+            coverage_price          = order.open_price() + (coverage_price_distance * side)
+            
+            if (new_stop_loss * side) < (coverage_price * side):
+                # This computation is for the case the coverage price is not a multiple of
+                # the instrument's tick size. For example, if the coverage price is 1000 and
+                # the instrument's tick size is 0.03, there needs to be a price adjustment,
+                # since 1000 is not a multiple of 0.03.
+                # 
+                # As the goal is to cover up the commission price, we take the next multiple
+                # of tick size after the coverage price if side is buy, or the previous
+                # multiple before the coverage price if side is sell. In the above example,
+                # the next multiple of 0.03 after 1000 is 1000.02, and the previous multiple
+                # of 0.03 before 1000 is 999.99, which would be used on a buy or sell order,
+                # respectively.
+                #
+                # In practice, this computation is mostly redundant, since most instruments
+                # will have a tick size of 0.01, but it's necessary nonetheless.
+                if side == Side.BUY:
+                    new_stop_loss = ceil(coverage_price / self.instrument.tick_size) * self.instrument.tick_size
+                else:
+                    new_stop_loss = floor(coverage_price / self.instrument.tick_size) * self.instrument.tick_size
 
         if (new_stop_loss * side) >= (current_price * side):
            return # cannot place Stop Loss at market price or above market price
 
         try:
-            self.modify_order(ticket, stop_loss=new_stop_loss)
+            self.modify_order(ticket, stop_loss = self.instrument.normalize_price(new_stop_loss))
         except error.RMTError as e:
-            print(str(e))
-
-    def _remove_trailing_stop(self, ticket: int):
-        try:
-            del self._tick_ts_list[ticket]
-        except KeyError:
-            pass
-
-        try:
-            del self._bar_closed_ts_list[ticket]
-        except KeyError:
-            pass
+            print('_update_trailing_stop:', str(e))
