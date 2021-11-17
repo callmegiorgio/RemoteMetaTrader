@@ -68,9 +68,7 @@ class Strategy(QObject):
         self._exchange   = exchange
         self._instrument = exchange.get_instrument(symbol)
 
-        self._last_closed_bar_time: Optional[datetime] = None
-
-        self._last_tick: Optional[Tick] = None
+        self._last_tick = self._exchange.get_tick(self.instrument.symbol)
         
         self._active_orders: Set[int] = set()
         self._history_orders: Set[int] = set()
@@ -90,6 +88,12 @@ class Strategy(QObject):
 
         return self._instrument
 
+    @property
+    def tick(self) -> Tick:
+        """Returns the last received tick on the strategy's instrument."""
+
+        return self._last_tick
+
     def active_orders(self) -> Set[int]:
         """Set of active orders placed by this strategy."""
         
@@ -107,13 +111,10 @@ class Strategy(QObject):
 
         return Performance(orders, 2)
 
-    def get_tick(self) -> Tick:
-        """Retrieves the last received tick on the strategy's instrument."""
+    def get_tick(self, symbol: str) -> Tick:
+        """Retrieves the last received tick on an instrument."""
 
-        if self._last_tick is None:
-            self._last_tick = self._exchange.get_tick(self.instrument.symbol)
-
-        return self._last_tick
+        return self._exchange.get_tick(symbol)
 
     def get_instrument(self, symbol: str) -> Instrument:
         """Retrieves an instrument from the exchange which this strategy is running on."""
@@ -209,9 +210,6 @@ class Strategy(QObject):
 
         self._exchange.cancel_order(ticket)
 
-        self._active_orders.remove(ticket)
-        self._history_orders.add(ticket)
-
     def close_order(self,
                     ticket:   int,
                     price:    Optional[float] = None,
@@ -227,13 +225,6 @@ class Strategy(QObject):
             slippage = slippage,
             lots     = lots
         )
-
-        self._active_orders.remove(ticket)
-
-        if new_ticket != ticket:
-            self._active_orders.add(new_ticket)
-
-        self._history_orders.add(ticket)
 
         return new_ticket
 
