@@ -348,6 +348,10 @@ class TrailingStopStrategy(Strategy):
            return # cannot place Stop Loss at market price or above market price
 
         try:
-            self.modify_order(ticket, stop_loss = self.instrument.normalize_price(new_stop_loss))
+            self.modify_order(
+                ticket      = ticket,
+                stop_loss   = self.instrument.normalize_price(new_stop_loss),
+                take_profit = order.take_profit
+            )
         except error.RMTError as e:
             print('_update_trailing_stop:', str(e))

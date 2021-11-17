@@ -409,18 +409,16 @@ class Exchange(QObject):
         this method returns successfully if either an order has been modified or the
         order's properties are left unchanged.
 
-        If all parameters are None, calling this method has no effect.
-
         Parameters
         ----------
         ticket : int
             Ticket that identifies a filled or pending order.
 
         stop_loss : float, optional
-            New Stop Loss level. (default: current Stop Loss level)
+            New Stop Loss level. (default: no Stop Loss)
         
         take_profit : float, optional
-            New Take Profit level. (default: current Take Profit level)
+            New Take Profit level. (default: no Take Profit)
         
         price : float, optional
             Price at which to fill the order. (default: current open price)

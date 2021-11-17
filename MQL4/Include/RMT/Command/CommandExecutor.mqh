@@ -482,11 +482,6 @@ CommandResult CommandExecutor::execute(const ModifyOrderRequest& request) overri
     {
         case OP_BUY:
         case OP_SELL:
-            // If neither S/L or T/P is provided in the request for a filled order,
-            // then, welp, there's nothing to change about it.
-            if (!request.stop_loss.has_value() && !request.take_profit.has_value())
-                return CommandResult::SUCCESS;
-
             break;
         
         default:
@@ -496,8 +491,8 @@ CommandResult CommandExecutor::execute(const ModifyOrderRequest& request) overri
             expiration = request.expiration.value_or(OrderExpiration());
     }
 
-    const double stop_loss   = request.stop_loss.value_or(OrderStopLoss());
-    const double take_profit = request.take_profit.value_or(OrderTakeProfit());
+    const double stop_loss   = request.stop_loss.value_or(0);
+    const double take_profit = request.take_profit.value_or(0);
 
     if (!OrderModify(request.ticket, price, stop_loss, take_profit, expiration))
     {

@@ -407,10 +407,6 @@ class MetaTrader4(Exchange):
                      price:       Optional[float]    = None,
                      expiration:  Optional[datetime] = None
     ):
-        # Ensure at least one parameter is not None.
-        if all(value is None for value in [stop_loss, take_profit, price, expiration]):
-            return
-
         request = requests.ModifyOrder(
             ticket,
             stop_loss,
@@ -433,17 +429,15 @@ class MetaTrader4(Exchange):
             if order is None:
                 return
             
-            if stop_loss is not None:
-                order._stop_loss = float(stop_loss)
+            order._stop_loss   = None if stop_loss   is None else float(stop_loss)
+            order._take_profit = None if take_profit is None else float(take_profit)
 
-            if take_profit is not None:
-                order._take_profit = float(take_profit)
+            if order.type != OrderType.MARKET_ORDER:
+                if price is not None:
+                    order._open_price = float(price)
 
-            if price is not None:
-                order._open_price = float(price)
-
-            if expiration is not None:
-                order._expiration = expiration
+                if expiration is not None:
+                    order._expiration = expiration
 
         except KeyError:
             pass
