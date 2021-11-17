@@ -32,18 +32,18 @@ class Performance(SlottedClass):
         self._gross_gain = 0
 
         for order in orders:
-            if order.status() != OrderStatus.CLOSED:
+            if order.status != OrderStatus.CLOSED:
                 continue
 
-            profit = round(order.profit() + order.commission(), 8)
+            profit = round(order.profit + order.commission + order.swap, 8)
 
             if profit == 0:
                 self._even_count += 1
                 continue
 
-            tp = order.take_profit()
-            sl = order.stop_loss()
-            close_price = order.close_price()
+            tp = order.take_profit
+            sl = order.stop_loss
+            close_price = order.close_price
 
             if profit < 0:
                 self._loss_count += 1
@@ -68,7 +68,7 @@ class Performance(SlottedClass):
                         self._gross_tp += profit
 
                 elif sl is not None:
-                    open_price = order.open_price()
+                    open_price = order.open_price
 
                     if ((order.is_buy()  and sl > open_price and close_price >= sl) or
                         (order.is_sell() and sl < open_price and close_price <= sl)):

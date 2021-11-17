@@ -29,7 +29,7 @@ class TrailingStop:
             was called for the last time.
         
         price_distance : float
-            Distance from `order.open_price()` and the current market price.
+            Distance from `order.open_price` and the current market price.
 
         Returns
         -------
@@ -90,7 +90,7 @@ class SteadyTrailingStop(TrailingStop, SlottedClass):
         sl_distance_count = int(price_distance / self._activation_distance)
 
         sl_distance   = sl_distance_count * self._reposition_distance
-        new_stop_loss = original_stop_loss + (sl_distance * order.side())
+        new_stop_loss = original_stop_loss + (sl_distance * order.side)
 
         return new_stop_loss
 
@@ -227,13 +227,13 @@ class TrailingStopStrategy(Strategy):
         
         order = self.get_order(ticket)
 
-        if order.symbol() != self.instrument.symbol:
+        if order.symbol != self.instrument.symbol:
             raise ValueError(
                 "order #{0} instrument ({1}) is not same as this strategy's instrument ({2})"
-                .format(ticket, order.symbol(), self.instrument.symbol)
+                .format(ticket, order.symbol, self.instrument.symbol)
             )
 
-        stop_loss = order.stop_loss()
+        stop_loss = order.stop_loss
 
         if stop_loss is None:
             raise ValueError('order #{} has no Stop Loss level'.format(ticket))
@@ -281,11 +281,11 @@ class TrailingStopStrategy(Strategy):
     ):
         order = ts_data.order
         
-        if order.status() not in [OrderStatus.FILLED, OrderStatus.PARTIALLY_FILLED]:
+        if order.status not in [OrderStatus.FILLED, OrderStatus.PARTIALLY_FILLED]:
             return
 
-        side       = order.side()
-        open_price = order.open_price()
+        side       = order.side
+        open_price = order.open_price
 
         if (current_price * side) <= (open_price * side):
             return
@@ -293,7 +293,7 @@ class TrailingStopStrategy(Strategy):
         price_distance = abs(current_price - open_price)
         new_stop_loss  = ts_data.trailing_stop.calculate(order, ts_data.original_stop_loss, price_distance)
 
-        if (new_stop_loss * side) <= (order.stop_loss() * side):
+        if (new_stop_loss * side) <= (order.stop_loss * side):
             return # cannot recede Stop Loss
 
         policy = ts_data.policy
@@ -310,8 +310,8 @@ class TrailingStopStrategy(Strategy):
             else:
                 new_stop_loss = max(new_stop_loss, open_price)
 
-        if (policy & TrailingStopPolicy.NO_COMMISSION) and (order.commission() != 0):
-            commission_price = abs(order.commission())
+        if (policy & TrailingStopPolicy.NO_COMMISSION) and (order.commission != 0):
+            commission_price = abs(order.commission)
 
             if self.instrument.quote_currency != self.account.currency:
                 rate = self.get_exchange_rate(
@@ -321,8 +321,8 @@ class TrailingStopStrategy(Strategy):
 
                 commission_price *= rate
 
-            coverage_price_distance = commission_price / order.lots()
-            coverage_price          = order.open_price() + (coverage_price_distance * side)
+            coverage_price_distance = commission_price / order.lots
+            coverage_price          = order.open_price + (coverage_price_distance * side)
             
             if (new_stop_loss * side) < (coverage_price * side):
                 # This computation is for the case the coverage price is not a multiple of
@@ -338,7 +338,7 @@ class TrailingStopStrategy(Strategy):
                 # respectively.
                 #
                 # In practice, this computation is mostly redundant, since most instruments
-                # will have a tick size of 0.01, but it's necessary nonetheless.
+                # will have a tick size like 0.01 or 0.0001, but it's necessary nonetheless.
                 if side == Side.BUY:
                     new_stop_loss = ceil(coverage_price / self.instrument.tick_size) * self.instrument.tick_size
                 else:

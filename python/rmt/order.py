@@ -16,9 +16,9 @@ class Side(IntEnum):
     For instance, consider the following code:
     
     ```
-    if side == Side.BUY and order.open_price() < 1000:
+    if side == Side.BUY and order.open_price < 1000:
         print('buy order opened at a price less than 1000')
-    elif side == Side.SELL and order.open_price() > 1000:
+    elif side == Side.SELL and order.open_price > 1000:
         print('sell order opened at a price greater than 1000')    
     ```
 
@@ -26,14 +26,14 @@ class Side(IntEnum):
     both sides, by using multiplication instead of if-branches:
 
     ```
-    if (order.open_price() * side) < (1000 * side):
+    if (order.open_price * side) < (1000 * side):
         print('order opened at a price [less than, if buy; greater than, if sell] 1000')
     ```
 
     In the above logic, if `side` is buy, the if-condition behaves the same way as
-    `order.open_price() < 1000`. If `side` is sell, however, the logic is evaluated
-    as `-order.open_price() < -1000`, which has the same effect of testing for
-    `order.open_price() > 1000`. The greater the value of open price is, the smaller
+    `order.open_price < 1000`. If `side` is sell, however, the logic is evaluated
+    as `-order.open_price < -1000`, which has the same effect of testing for
+    `order.open_price > 1000`. The greater the value of open price is, the smaller
     it is when multiplied by -1, and thus the behavior is the same as the buy case.
 
     The multiplication style is less verbose and is supposed to be slightly faster,
@@ -136,57 +136,75 @@ class Order(SlottedClass):
         self._profit       = float(profit)
         self._swap         = float(swap)
 
+    @property
     def ticket(self) -> int:
         return self._ticket
 
+    @property
     def symbol(self) -> str:
         return self._symbol
 
+    @property
     def side(self) -> Side:
         return self._side
 
+    @property
     def type(self) -> OrderType:
         return self._type
     
+    @property
     def lots(self) -> float:
         return self._lots
 
+    @property
     def status(self) -> OrderStatus:
         return self._status
 
+    @property
     def open_price(self) -> float:
         return self._open_price
 
+    @property
     def open_time(self) -> datetime:
         return self._open_time
 
+    @property
     def close_price(self) -> Optional[float]:
         return self._close_price
 
+    @property
     def close_time(self) -> Optional[datetime]:
         return self._close_time
 
+    @property
     def stop_loss(self) -> Optional[float]:
         return self._stop_loss
 
+    @property
     def take_profit(self) -> Optional[float]:
         return self._take_profit
 
+    @property
     def expiration(self) -> Optional[datetime]:
         return self._expiration
 
+    @property
     def magic_number(self) -> int:
         return self._magic_number
 
+    @property
     def comment(self) -> str:
         return self._comment
 
+    @property
     def commission(self) -> float:
         return self._commission
 
+    @property
     def profit(self) -> float:
         return self._profit
 
+    @property
     def swap(self) -> float:
         return self._swap
 
@@ -197,9 +215,9 @@ class Order(SlottedClass):
         return self._side == Side.SELL
 
     def duration(self) -> timedelta:
-        last_time = self.close_time()
+        last_time = self.close_time
 
         if last_time is None:
             last_time = datetime.now(timezone.utc)
 
-        return last_time - self.open_time()            
+        return last_time - self.open_time            

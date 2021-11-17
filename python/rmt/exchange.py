@@ -51,7 +51,7 @@ class Exchange(QObject):
     exchange's platform.
     
     The parameter passed in is the ticket of the canceled order. You may identify
-    whether that order is a limit order or a stop order by calling `Order.type()` on
+    whether that order is a limit order or a stop order by accessing `Order.type` on
     the object returned by `get_order()`.
 
     Note that this event is only emitted for tracked orders. In particular, if neither

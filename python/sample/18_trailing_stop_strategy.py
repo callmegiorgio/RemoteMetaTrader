@@ -46,8 +46,8 @@ buy_order  = strategy.get_order(buy_order_ticket)
 sell_order = strategy.get_order(sell_order_ticket)
 
 while True:
-    if (buy_order.status()  == OrderStatus.CLOSED and
-        sell_order.status() == OrderStatus.CLOSED):
+    if (buy_order.status  == OrderStatus.CLOSED and
+        sell_order.status == OrderStatus.CLOSED):
         print('Buy and sell orders closed. Bye!')
         break
 
