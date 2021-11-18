@@ -330,6 +330,9 @@ class MetaTrader4(Exchange):
             elif e.code == CommandResultCode.REQUOTE:
                 raise rmt.error.Requote(symbol) from None
 
+            elif e.code == CommandResultCode.INVALID_STOPS:
+                raise rmt.error.InvalidStops(stop_loss, take_profit)
+
             else:
                 raise e from None
 

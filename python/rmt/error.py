@@ -1,4 +1,4 @@
-from typing import Any, Type
+from typing import Any, Optional, Type
 from rmt    import Side, OrderType
 
 class RMTError(Exception):
@@ -92,5 +92,16 @@ class ExchangeRateError(ExecutionError):
 
     def __init__(self, base_currency: str, quote_currency: str):
         error_msg = "no exchange rate found for currency pair {0}/{1}".format(base_currency, quote_currency)
+
+        super().__init__(error_msg)
+
+class InvalidStops(ExecutionError):
+    """Raised if a Stop Loss or Take Profit price is invalid."""
+
+    def __init__(self, stop_loss: Optional[float], take_profit: Optional[float]):
+        error_msg = (
+            'either Stop Loss ({0}) or Take Profit ({1}) is invalid'
+            .format(stop_loss, take_profit)
+        )
 
         super().__init__(error_msg)
