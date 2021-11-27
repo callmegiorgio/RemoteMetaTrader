@@ -1,6 +1,5 @@
-from datetime import datetime, timezone
-from typing   import Optional
-from .        import Event
+from typing import Optional
+from .      import Event
 
 class OrderFinishedEvent(Event):
     content_layout = {
@@ -26,8 +25,8 @@ class OrderFinishedEvent(Event):
     def close_price(self) -> float:
         return self['cp']
 
-    def close_time(self) -> datetime:
-        return datetime.fromtimestamp(self['ct'], timezone.utc)
+    def close_time(self) -> int:
+        return self['ct']
 
     def stop_loss(self) -> Optional[float]:
         return self['sl']
@@ -35,13 +34,8 @@ class OrderFinishedEvent(Event):
     def take_profit(self) -> Optional[float]:
         return self['tp']
 
-    def expiration(self) -> Optional[datetime]:
-        expiration = self['expiration']
-
-        if expiration is not None:
-            expiration = datetime.fromtimestamp(expiration, timezone.utc)
-
-        return expiration
+    def expiration(self) -> Optional[int]:
+        return self['expiration']
 
     def comment(self) -> str:
         return self['comment']

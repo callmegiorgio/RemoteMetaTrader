@@ -1,6 +1,5 @@
-from datetime import datetime, timezone
-from typing   import Optional
-from .        import Response
+from typing import Optional
+from .      import Response
 
 class PlaceOrder(Response):
     content_layout = {
@@ -22,8 +21,8 @@ class PlaceOrder(Response):
     def open_price(self) -> Optional[float]:
         return self['op']
 
-    def open_time(self) -> Optional[datetime]:
-        return datetime.fromtimestamp(self['ot'], timezone.utc)
+    def open_time(self) -> Optional[int]:
+        return self['ot']
 
     def commission(self) -> Optional[float]:
         return self['commission']

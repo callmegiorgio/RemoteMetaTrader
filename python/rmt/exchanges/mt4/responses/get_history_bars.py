@@ -1,5 +1,4 @@
-from datetime import datetime, timezone
-from .        import Response
+from . import Response
 
 class GetHistoryBars(Response):
     content_layout = [[int, float, float, float, float, int]]
@@ -7,8 +6,8 @@ class GetHistoryBars(Response):
     def bar_count(self) -> int:
         return len(self)
 
-    def time(self, index: int) -> datetime:
-        return datetime.fromtimestamp(self[index][0], timezone.utc)
+    def time(self, index: int) -> int:
+        return self[index][0]
 
     def open(self, index: int) -> float:
         return self[index][1]

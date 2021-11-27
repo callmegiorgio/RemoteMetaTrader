@@ -43,7 +43,7 @@ class TimeBasedStrategy(Strategy):
 
     @pyqtSlot(Tick)
     def _notify_tick_handlers(self, tick: Tick):
-        tick_time = tick.server_time.time()
+        tick_time = tick.time.time()
 
         for pred, handler in self._tick_handlers:
             if pred(tick_time):

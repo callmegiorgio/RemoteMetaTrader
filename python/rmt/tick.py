@@ -1,24 +1,19 @@
-from datetime import datetime, timezone
-from typing   import Tuple, List
+from datetime import datetime
 from rmt      import SlottedClass
 
 class Tick(SlottedClass):
     """Stores the quotes of an instrument."""
 
-    __slots__ = [ '_server_time', '_bid', '_ask' ]
+    __slots__ = [ '_time', '_bid', '_ask' ]
 
-    def __init__(self,
-                 server_time: datetime = datetime.fromtimestamp(0, timezone.utc),
-                 bid: float = 0,
-                 ask: float = 0
-    ):
-        self._server_time = server_time
-        self._bid         = float(bid)
-        self._ask         = float(ask)
+    def __init__(self, time: datetime, bid: float, ask: float):
+        self._time = time
+        self._bid  = float(bid)
+        self._ask  = float(ask)
 
     @property
-    def server_time(self) -> datetime:
-        return self._server_time
+    def time(self) -> datetime:
+        return self._time
     
     @property
     def bid(self) -> float:
@@ -28,33 +23,9 @@ class Tick(SlottedClass):
     def ask(self) -> float:
         return self._ask
 
+    @property
     def spread(self) -> float:
         return abs(self.bid - self.ask)
 
-    def items(self) -> Tuple[datetime, float, float]:
-        return (self.server_time, self.bid, self.ask)
-
     def __str__(self) -> str:
-        return 'Tick({}, bid: {}, ask: {})'.format(self.server_time, self.bid, self.ask)
-
-def read_ticks_from_csv(filepath:   str,
-                        separator:  str = ',',
-                        time_index: int = 0,
-                        bid_index:  int = 1,
-                        ask_index:  int = 2
-) -> List[Tick]:
-    ticks = []
-
-    with open(filepath, 'r') as file:
-        for line in file:
-            values = line.split(separator)
-
-            tick = Tick(
-                server_time = datetime.fromtimestamp(int(values[time_index]), timezone.utc),
-                bid         = float(values[bid_index]),
-                ask         = float(values[ask_index])
-            )
-
-            ticks.append(tick)
-
-    return ticks
+        return 'Tick({}, bid: {}, ask: {})'.format(self.time, self.bid, self.ask)

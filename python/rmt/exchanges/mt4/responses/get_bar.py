@@ -1,11 +1,10 @@
-from datetime import datetime, timezone
-from .        import Response
+from . import Response
 
 class GetBar(Response):
     content_layout = [int, float, float, float, float, int]
 
-    def time(self) -> datetime:
-        return datetime.fromtimestamp(self[0], timezone.utc)
+    def time(self) -> int:
+        return self[0]
 
     def open(self) -> float:
         return self[1]

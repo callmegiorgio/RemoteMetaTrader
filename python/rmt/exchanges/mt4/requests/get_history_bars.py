@@ -9,8 +9,8 @@ class GetHistoryBars(Request):
 
     def __init__(self,
                  symbol:     str,
-                 start_time: Optional[datetime],
-                 end_time:   Optional[datetime],
+                 start_time: Optional[int],
+                 end_time:   Optional[int],
                  timeframe:  Timeframe = Timeframe.M1
     ):
         super().__init__()
@@ -29,10 +29,10 @@ class GetHistoryBars(Request):
             'timeframe': self._timeframe
         }
 
-        if isinstance(self._start_time, datetime):
-            msg['start_time'] = int(self._start_time.timestamp())
+        if self._start_time is not None:
+            msg['start_time'] = self._start_time
 
-        if isinstance(self._end_time, datetime):
-            msg['end_time'] = int(self._end_time.timestamp())
+        if self._end_time is not None:
+            msg['end_time'] = self._end_time
         
         return msg

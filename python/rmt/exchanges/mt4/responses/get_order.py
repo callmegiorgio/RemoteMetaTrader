@@ -1,6 +1,5 @@
-from datetime import datetime, timezone
-from typing   import Optional
-from .        import Response
+from typing import Optional
+from .      import Response
 
 class GetOrder(Response):
     content_layout = {
@@ -37,19 +36,14 @@ class GetOrder(Response):
     def open_price(self) -> float:
         return self['op']
 
-    def open_time(self) -> datetime:
-        return datetime.fromtimestamp(self['ot'], timezone.utc)
+    def open_time(self) -> int:
+        return self['ot']
 
     def close_price(self) -> Optional[float]:
         return self['cp']
 
-    def close_time(self) -> Optional[datetime]:
-        close_time = self['ct']
-
-        if close_time is not None:
-            close_time = datetime.fromtimestamp(close_time, timezone.utc)
-
-        return close_time
+    def close_time(self) -> Optional[int]:
+        return self['ct']
 
     def stop_loss(self) -> Optional[float]:
         return self['sl']
@@ -57,13 +51,8 @@ class GetOrder(Response):
     def take_profit(self) -> Optional[float]:
         return self['tp']
 
-    def expiration(self) -> Optional[datetime]:
-        expiration = self['expiration']
-
-        if expiration is not None:
-            expiration = datetime.fromtimestamp(expiration, timezone.utc)
-
-        return expiration
+    def expiration(self) -> Optional[int]:
+        return self['expiration']
 
     def comment(self) -> str:
         return self['comment']

@@ -1,5 +1,4 @@
-from datetime import datetime, timezone
-from .        import Event
+from . import Event
 
 class BarClosedEvent(Event):    
     content_layout = {
@@ -14,8 +13,8 @@ class BarClosedEvent(Event):
     def symbol(self) -> str:
         return self.dynamic_name
 
-    def time(self) -> datetime:
-        return datetime.fromtimestamp(self['time'], timezone.utc)
+    def time(self) -> int:
+        return self['time']
 
     def open(self) -> float:
         return self['open']

@@ -1,6 +1,5 @@
-from datetime import datetime, timezone
-from typing   import Optional
-from .        import Response
+from typing import Optional
+from .      import Response
 
 class CloseOrder(Response):
     content_layout = {
@@ -67,8 +66,8 @@ class CloseOrder(Response):
     def close_price(self) -> float:
         return self['cp']
 
-    def close_time(self) -> datetime:
-        return datetime.fromtimestamp(self['ct'], timezone.utc)
+    def close_time(self) -> int:
+        return self['ct']
 
     def comment(self) -> str:
         return self['comment']
