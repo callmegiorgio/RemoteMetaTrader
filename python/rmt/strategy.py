@@ -1,11 +1,167 @@
-import rmt
-from datetime     import datetime
+import rmt, pytz
+from datetime     import datetime, timedelta, tzinfo
 from typing       import Optional, Set
+from pprint       import pformat
+from functools    import singledispatchmethod
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from rmt          import (
     Exchange, Tick, Bar, Performance, Instrument, Account,
-    Timeframe, Order, Side, OrderType
+    Timeframe, Order, Side, OrderType, OrderStatus, SlottedClass
 )
+
+class TimezonedTick(Tick):
+    __slots__ = ['_strategy']
+
+    def __init__(self, strategy, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._strategy = strategy
+
+    @property
+    def time(self) -> datetime:
+        return super().time.astimezone(self._strategy.timezone)
+
+class TimezonedBar(Bar):
+    __slots__ = ['_strategy']
+
+    def __init__(self, strategy, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._strategy = strategy
+
+    @property
+    def time(self) -> datetime:
+        return super().time.astimezone(self._strategy.timezone)
+
+class TimezonedOrder(SlottedClass):
+    """Wraps a reference to an order along with a strategy for accessing the
+    strategy's timezone. This allows orders returned by `Strategy.get_order()` to refer to the underlying order object,
+    even if:
+    1. A member of the underlying order object (such as `Order.status`) is changed;
+    2. `Strategy.timezone` is changed.
+
+    >>> strategy = Strategy(...)
+    >>> strategy.timezone
+    'UTC'
+    >>> order = strategy.get_order(ticket)
+    >>> repr(order.open_time)
+    datetime.datetime(2020, 11, 23, 14, 31, tzinfo=<UTC>)
+    >>> strategy.timezone = pytz.timezone('America/New_York')
+    >>> repr(order.open_time)
+    datetime.datetime(2020, 11, 23, 9, 31, tzinfo=<DstTzInfo 'America/New_York' EST-1 day, 19:00:00 STD>)
+    """
+
+    __slots__ = ['_order', '_strategy']
+
+    def __init__(self, order: Order, strategy):
+        super().__init__()
+
+        self._order    = order
+        self._strategy = strategy
+    
+    @property
+    def timezone(self) -> tzinfo:
+        return self._strategy.timezone
+
+    @property
+    def ticket(self) -> int:
+        return self._order._ticket
+
+    @property
+    def symbol(self) -> str:
+        return self._order._symbol
+
+    @property
+    def side(self) -> Side:
+        return self._order._side
+
+    @property
+    def type(self) -> OrderType:
+        return self._order._type
+    
+    @property
+    def lots(self) -> float:
+        return self._order._lots
+
+    @property
+    def status(self) -> OrderStatus:
+        return self._order._status
+
+    @property
+    def open_price(self) -> float:
+        return self._order._open_price
+
+    @property
+    def open_time(self) -> datetime:
+        return self._order.open_time.astimezone(self.timezone)
+
+    @property
+    def close_price(self) -> Optional[float]:
+        return self._order._close_price
+
+    @property
+    def close_time(self) -> Optional[datetime]:
+        if self._order.close_time is None:
+            return None
+        else:
+            return self._order.close_time.astimezone(self.timezone)
+
+    @property
+    def stop_loss(self) -> Optional[float]:
+        return self._order._stop_loss
+
+    @property
+    def take_profit(self) -> Optional[float]:
+        return self._order._take_profit
+
+    @property
+    def expiration(self) -> Optional[datetime]:
+        if self._order.expiration is None:
+            return None
+        else:
+            return self._order.expiration.astimezone(self.timezone)
+
+    @property
+    def magic_number(self) -> int:
+        return self._order._magic_number
+
+    @property
+    def comment(self) -> str:
+        return self._order._comment
+
+    @property
+    def commission(self) -> float:
+        return self._order._commission
+
+    @property
+    def profit(self) -> float:
+        return self._order._profit
+
+    @property
+    def swap(self) -> float:
+        return self._order.swap
+
+    def is_buy(self) -> bool:
+        return self._order.is_buy()
+
+    def is_sell(self) -> bool:
+        return self._order.is_sell()
+
+    def duration(self) -> timedelta:
+        return self._order.duration()
+
+    def __repr__(self) -> str:
+        obj = {}
+
+        for attr in self._order.__slots__:
+            value = getattr(self._order, attr)
+
+            if isinstance(value, datetime):
+                value = value.astimezone(self.timezone)
+
+            obj[attr] = value
+
+        return pformat(obj, indent=4, width=1)
 
 class Strategy(QObject):
     """
@@ -68,8 +224,9 @@ class Strategy(QObject):
         self._exchange   = exchange
         self._instrument = exchange.get_instrument(symbol)
 
+        self._timezone  = pytz.utc
         self._last_tick = self._exchange.get_tick(self.instrument.symbol)
-        
+
         self._active_orders: Set[int] = set()
         self._history_orders: Set[int] = set()
 
@@ -97,6 +254,60 @@ class Strategy(QObject):
         """Returns the last received tick on the strategy's instrument."""
 
         return self._last_tick
+
+    @property
+    def timezone(self) -> tzinfo:
+        """Returns the timezone used by the strategy."""
+
+        return self._timezone
+
+    @timezone.setter
+    def timezone(self, timezone: tzinfo):
+        """Sets the timezone to be used by the strategy.
+        
+        This will cause all datetime-related values coming from this strategy
+        or its associated objects to be in the given `timezone`. In particular,
+        `Order`, `Tick`, and `Bar` objects will have their datetime members in the
+        given timezone.
+        """
+
+        self._timezone  = timezone
+        self._last_tick = self.astimezone(self._last_tick)
+
+    @singledispatchmethod
+    def astimezone(self, o: object):
+        raise rmt.error.NotImplementedException(self.__class__, 'astimezone')
+
+    @astimezone.register
+    def _(self, tick: Tick) -> Tick:
+        if tick.time.tzinfo == self._timezone:
+            return tick
+        else:
+            return TimezonedTick(
+                strategy = self,
+                time     = tick.time,
+                bid      = tick.bid,
+                ask      = tick.ask
+            )
+
+    @astimezone.register
+    def _(self, bar: Bar) -> Bar:
+        if bar.time.tzinfo == self._timezone:
+            return bar
+        else:
+            return TimezonedBar(
+                strategy = self,
+                time     = bar.time,
+                open     = bar.open,
+                high     = bar.high,
+                low      = bar.low,
+                close    = bar.close,
+                volume   = bar.volume
+            )
+
+    @astimezone.register
+    def _(self, order: Order) -> Order:
+        return TimezonedOrder(order, self)
 
     def active_orders(self) -> Set[int]:
         """Set of active orders placed by this strategy."""
@@ -135,7 +346,21 @@ class Strategy(QObject):
         if symbol is Ellipsis:
             symbol = self.instrument.symbol
 
-        return self._exchange.get_bar(symbol=symbol, index=index, timeframe=timeframe)
+        bar = self._exchange.get_bar(symbol=symbol, index=index, timeframe=timeframe)
+
+        return self.astimezone(bar)
+
+    def get_history_bar(self,
+                        time:      datetime,
+                        timeframe: Timeframe = Timeframe.M1,
+                        symbol:    str = ...
+    ) -> Optional[Bar]:
+        if symbol is Ellipsis:
+            symbol = self.instrument.symbol
+
+        bar = self._exchange.get_history_bar(symbol=symbol, time=time, timeframe=timeframe)
+
+        return self.astimezone(bar)
 
     def get_order(self, ticket: int) -> Order:
         """Retrieves information of an order placed by this strategy.
@@ -152,7 +377,9 @@ class Strategy(QObject):
         """
 
         if ticket in self._active_orders or ticket in self._history_orders:
-            return self._exchange.get_order(ticket)
+            order = self._exchange.get_order(ticket)
+
+            return self.astimezone(order)
 
         raise rmt.error.InvalidTicket(ticket)
 
@@ -243,16 +470,15 @@ class Strategy(QObject):
         if symbol != self.instrument.symbol:
             return
 
-        self._last_tick = tick
-
-        self.tick_received.emit(tick)
+        self._last_tick = self.astimezone(tick)
+        self.tick_received.emit(self._last_tick)
 
     @pyqtSlot(str, Bar)
     def _notify_bar_closed(self, symbol: str, bar: Bar):
         if symbol != self.instrument.symbol:
             return
 
-        self.bar_closed.emit(bar)
+        self.bar_closed.emit(self.astimezone(bar))
 
     @pyqtSlot(int)
     def _notify_order_opened(self, ticket: int):
