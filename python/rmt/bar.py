@@ -1,5 +1,5 @@
-from datetime import datetime, timezone
-from typing   import Optional, List
+from datetime import datetime
+from typing   import Optional
 from rmt      import Side, SlottedClass
 
 class Bar(SlottedClass):
@@ -67,34 +67,6 @@ class Bar(SlottedClass):
 
     def __str__(self) -> str:
         return (
-            'Bar(%s, O: %s, H: %s, L: %s, C: %s, V: %s)'
-            % (self.time.strftime('%Y-%m-%d %H:%M'), self.open, self.high, self.low, self.close, self.volume)
+            'Bar({}, O: {}, H: {}, L: {}, C: {}, V: {})'
+            .format(self.time.strftime('%Y-%m-%d %H:%M+%Z'), self.open, self.high, self.low, self.close, self.volume)
         )
-
-def read_bars_from_csv(filepath:     str,
-                       separator:    str = ',',
-                       time_index:   int = 0,
-                       open_index:   int = 1, 
-                       high_index:   int = 2,
-                       low_index:    int = 3,
-                       close_index:  int = 4,
-                       volume_index: int = 5
-) -> List[Bar]:
-    bars = []
-
-    with open(filepath, 'r') as file:
-        for line in file:
-            values = line.split(separator)
-
-            bar = Bar(
-                time   = datetime.fromtimestamp(int(values[time_index]), timezone.utc),
-                open   = float(values[open_index]),
-                high   = float(values[high_index]),
-                low    = float(values[low_index]),
-                close  = float(values[close_index]),
-                volume = int(values[volume_index])
-            )
-
-            bars.append(bar)
-
-    return bars

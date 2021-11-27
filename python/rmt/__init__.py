@@ -8,7 +8,7 @@ from .instrument    import Instrument
 from .order         import Side, OrderType, OrderStatus, Order
 from .              import error
 from .performance   import Performance
-from .bar           import Bar, read_bars_from_csv
+from .bar           import Bar
 from .timeframe     import Timeframe
 from .exchange      import Exchange
 from .strategy      import Strategy
