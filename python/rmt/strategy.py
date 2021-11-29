@@ -1,4 +1,4 @@
-import rmt, pytz
+import rmt, pytz, logging
 from datetime     import datetime, timedelta, tzinfo
 from typing       import Optional, Set
 from pprint       import pformat
@@ -238,6 +238,17 @@ class Strategy(QObject):
         self._exchange.order_modified.connect(self._notify_order_modified)
         self._exchange.order_filled.connect(self._notify_order_filled)
         self._exchange.order_closed.connect(self._notify_order_closed)
+
+        self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger.info(
+            "started strategy with main instrument '%s' on server '%s'",
+            self.instrument.symbol,
+            self.account.server
+        )
+
+    @property
+    def logger(self) -> logging.Logger:
+        return self._logger
 
     @property
     def account(self) -> Account:
