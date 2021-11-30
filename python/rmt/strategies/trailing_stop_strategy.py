@@ -269,14 +269,13 @@ class TrailingStopStrategy(Strategy):
         self._update_trailing_stops_in_list(self._bar_closed_ts_list, tick)
 
     def _update_trailing_stops_in_list(self, ts_list: Dict[int, TrailingStopData], tick: Tick):
-        for ticket, ts_data in ts_list.items():
+        for _, ts_data in ts_list.items():
             price = tick.bid if ts_data.order.is_buy() else tick.ask
 
-            self._update_trailing_stop(price, ticket, ts_data)
+            self._update_trailing_stop(price, ts_data)
 
     def _update_trailing_stop(self,
                               current_price: float,
-                              ticket:        int,
                               ts_data:       TrailingStopData
     ):
         order = ts_data.order
@@ -349,7 +348,7 @@ class TrailingStopStrategy(Strategy):
 
         try:
             self.modify_order(
-                ticket      = ticket,
+                order       = order,
                 stop_loss   = self.instrument.normalize_price(new_stop_loss),
                 take_profit = order.take_profit
             )

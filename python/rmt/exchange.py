@@ -1,8 +1,10 @@
 from datetime     import datetime
 from typing       import Dict, List, Optional, Set
 from PyQt5.QtCore import QObject, pyqtSignal
-from rmt          import (Side, Order, Tick, Bar, OrderType, Timeframe,
-                          Instrument, Account, error)
+from rmt          import (
+    Side, Order, Tick, Bar, OrderType, Timeframe,
+    Instrument, Account, error
+)
 
 class Exchange(QObject):
     """Provides access to market data and allows execution of trades."""
@@ -290,7 +292,7 @@ class Exchange(QObject):
                     comment:      str = '',
                     magic_number: int = 0,
                     expiration:   Optional[datetime] = None
-    ) -> int:
+    ) -> Order:
         """Places an order to buy or sell a contract of an instrument.
 
         Description
@@ -381,14 +383,14 @@ class Exchange(QObject):
 
         Returns
         -------
-        int
-            Ticket that identifies the order placed.
+        Order
+            the order placed.
         """
 
         raise error.NotImplementedException(self.__class__, 'place_order')
 
     def modify_order(self,
-                     ticket:      int,
+                     order:       Order,
                      stop_loss:   Optional[float]    = None,
                      take_profit: Optional[float]    = None,
                      price:       Optional[float]    = None,
@@ -399,20 +401,18 @@ class Exchange(QObject):
         Description
         -----------
         This method allows changing the Take Profit and Stop Loss levels of a pending
-        or filled order identified by `ticket`.
+        or filled order.
 
         If that order is pending, this method also allows modification of its open price
         and expiration time, both of which are ignored if that order's status is filled.
         
-        If `ticket` does not identify an order, or if the order is neither pending nor
-        filled, or if modification fails for some reason, raises an error. Otherwise,
-        this method returns successfully if either an order has been modified or the
-        order's properties are left unchanged.
+        If the order is invalid, or is neither pending nor filled, or if modification
+        fails for some reason, raises an error. Otherwise, this method returns successfully.
 
         Parameters
         ----------
-        ticket : int
-            Ticket that identifies a filled or pending order.
+        order : Order
+            Order with a filled or pending order status.
 
         stop_loss : float, optional
             New Stop Loss level. (default: no Stop Loss)
@@ -435,7 +435,7 @@ class Exchange(QObject):
             If exchange takes too long to reply to the request.
 
         InvalidTicket
-            If `ticket` does not identify an order.
+            If `order.ticket` does not identify an order on the exchange.
 
         InvalidOrderStatus
             If order is not pending or filled.
@@ -446,25 +446,25 @@ class Exchange(QObject):
 
         raise error.NotImplementedException(self.__class__, 'modify_order')
 
-    def cancel_order(self, ticket: int) -> None:
+    def cancel_order(self, order: Order) -> None:
         """Cancels a pending order.
 
         Description
         -----------
         
-        If `ticket` identifies an order whose status is pending, cancels that order and
-        returns. Otherwise, if the order is not pending or if cancelation of that order
-        fails for some reason, raises an error.
+        If `order` has a pending status, cancels that order and returns. Otherwise,
+        if the order is not pending or if cancelation of that order fails for some
+        reason, raises an error.
 
         Parameters
         ----------
-        ticket : int
-            Ticket that identifies a pending order.
+        order : Order
+            A pending order.
         
         Raises
         ------
         InvalidTicket
-            If `ticket` does not identify an order.
+            If `order.ticket` does not identify an order on the exchange.
 
         InvalidOrderStatus
             If the order identified by `ticket` is not pending.
@@ -479,38 +479,29 @@ class Exchange(QObject):
         raise error.NotImplementedException(self.__class__, 'cancel_order')
 
     def close_order(self,
-                    ticket:   int,
+                    order:    Order,
                     price:    Optional[float] = None,
                     slippage: int             = 0,
                     lots:     Optional[float] = None
-    ) -> int:
+    ) -> Optional[Order]:
         """Closes a filled order.
 
         Description
         -----------
-        This method requests the exchange server to close the order identified by
-        `ticket`.
+        This method requests the exchange server to close an order whose status is
+        filled. If the status of the order is not filled, an exception is raised.
 
-        If `ticket` does not identify an order, raises `InvalidTicket`.
+        If `price` is not None, the order will be closed at the provided price.
+        Otherwise, the current market price will be used instead.
 
-        Otherwise, if an order is found and the status of that order is final, namely
-        the order is either closed, canceled, or expired, returns `ticket`.
-
-        On the other hand, if the status of that order is pending, raises `InvalidOrderStatus`.
-
-        Otherwise, tries to close the order.
-        
-        If `price` is a `float` value, the order will be closed at the provided price.
-        Otherwise, the value of None will use the current market price. If the order is
-        a sell, the current ask price will be used; if the order is a buy, the current
-        bid price will be used.
-
-        If a `slippage` is provided, the order will attempt to 
+        If `lots` is None, the order will be closed as whole. Otherwise, `lots`
+        amount of the order will be closed, which may be the whole lot size of
+        the order or a partial size.
 
         Parameters
         ----------
-        ticket : int
-            Ticket that identifies an order.
+        order : Order
+            A filled order.
         
         price : float, optional
             Price at which to close the order. (default: market price)
@@ -528,6 +519,12 @@ class Exchange(QObject):
 
         Requote
             ...
+
+        Returns
+        -------
+        Order, optional
+            New order remaining from a partial close if `order` was closed partially,
+            and `None` otherwise.
         """
 
         raise error.NotImplementedException(self.__class__, 'close_order')

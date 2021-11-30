@@ -6,12 +6,12 @@
 /// Response:
 /// {
 ///   "ticket":     integer,
-///   "lots":       ?double,
-///   "op":         ?double,
-///   "ot":         ?datetime,
-///   "commission": ?double,
-///   "profit":     ?double,
-///   "swap":       ?double
+///   "lots":       double,
+///   "op":         double,
+///   "ot":         datetime,
+///   "commission": double,
+///   "profit":     double,
+///   "swap":       double
 /// }
 class PlaceOrderResponse {
 public:
@@ -26,11 +26,11 @@ public:
         writer.write("swap",       this.swap);
     }
 
-    int                ticket;
-    Optional<double>   lots;
-    Optional<double>   open_price;
-    Optional<datetime> open_time;
-    Optional<double>   commission;
-    Optional<double>   profit;
-    Optional<double>   swap;
+    int      ticket;
+    double   lots;
+    double   open_price;
+    datetime open_time;
+    double   commission;
+    double   profit;
+    double   swap;
 };

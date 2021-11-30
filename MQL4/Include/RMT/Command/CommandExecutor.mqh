@@ -278,20 +278,25 @@ CommandResult CommandExecutor::execute(const PlaceOrderRequest& request, PlaceOr
 
         if (ticket != -1)
         {
-            response.ticket = ticket;
-        
             if (OrderSelect(ticket, SELECT_BY_TICKET))
             {
+                response.ticket     = ticket;
                 response.lots       = OrderLots();
                 response.open_price = OrderOpenPrice();
                 response.open_time  = OrderOpenTime();
                 response.commission = OrderCommission();
                 response.profit     = OrderProfit();
                 response.swap       = OrderSwap();
-            }
 
-            cmd_result = CommandResult::SUCCESS;
-            break;
+                cmd_result = CommandResult::SUCCESS;
+                break;
+            }
+            else
+            {
+                Print("PANIC at PlaceOrderRequest! OrderSelect() failed with valid ticket ", ticket);
+
+                // Fallthrough
+            }
         }
 
         cmd_result = GetLastError();

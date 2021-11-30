@@ -1,6 +1,6 @@
 import rmt, pytz, logging
 from datetime     import datetime, timedelta, tzinfo
-from typing       import Optional, Set
+from typing       import Dict, List, Optional
 from pprint       import pformat
 from functools    import singledispatchmethod
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
@@ -59,6 +59,10 @@ class TimezonedOrder(SlottedClass):
         self._order    = order
         self._strategy = strategy
     
+    @property
+    def underlying_order(self) -> Order:
+        return self._order
+
     @property
     def timezone(self) -> tzinfo:
         return self._strategy.timezone
@@ -227,8 +231,8 @@ class Strategy(QObject):
         self._timezone  = pytz.utc
         self._last_tick = self._exchange.get_tick(self.instrument.symbol)
 
-        self._active_orders: Set[int] = set()
-        self._history_orders: Set[int] = set()
+        self._active_orders:  Dict[int, Order] = {}
+        self._history_orders: Dict[int, Order] = {}
 
         self._exchange.tick_received.connect(self._notify_tick_received)
         self._exchange.bar_closed.connect(self._notify_bar_closed)
@@ -320,22 +324,20 @@ class Strategy(QObject):
     def _(self, order: Order) -> Order:
         return TimezonedOrder(order, self)
 
-    def active_orders(self) -> Set[int]:
+    def active_orders(self) -> List[Order]:
         """Set of active orders placed by this strategy."""
-        
-        return self._active_orders.copy()
 
-    def history_orders(self) -> Set[int]:
+        return list(self._active_orders.values())
+
+    def history_orders(self) -> List[Order]:
         """Set of history orders which were placed by this strategy."""
 
-        return self._history_orders.copy()
+        return list(self._history_orders.values())
 
     def performance(self) -> Performance:
         """Performance of this strategy, calculated by its closed orders."""
 
-        orders = [self._exchange.get_order(ticket) for ticket in self._history_orders]
-
-        return Performance(orders, 2)
+        return Performance(self.history_orders(), 2)
 
     def get_tick(self, symbol: str) -> Tick:
         """Retrieves the last received tick on an instrument."""
@@ -409,11 +411,11 @@ class Strategy(QObject):
                     magic_number: int = 0,
                     expiration:   Optional[datetime] = None,
                     symbol:       Optional[str]      = None
-    ) -> int:
+    ) -> Order:
         if symbol is None:
             symbol = self.instrument.symbol
 
-        ticket = self._exchange.place_order(
+        order = self._exchange.place_order(
             side         = side,
             order_type   = order_type,
             lots         = lots,
@@ -427,51 +429,64 @@ class Strategy(QObject):
             expiration   = expiration
         )
 
-        self._active_orders.add(ticket)
+        order = self.astimezone(order)
+        self._active_orders[order.ticket] = order
 
-        return ticket
+        return order
 
     def modify_order(self,
-                     ticket: int,
+                     order:       Order,
                      stop_loss:   Optional[float]    = None,
                      take_profit: Optional[float]    = None,
                      price:       Optional[float]    = None,
                      expiration:  Optional[datetime] = None
     ) -> None:
-        if ticket not in self._active_orders:
-            raise rmt.error.InvalidTicket(ticket)
+        if order.ticket not in self._active_orders:
+            raise rmt.error.InvalidTicket(order.ticket)
         
+        if isinstance(order, TimezonedOrder):
+            order = order.underlying_order
+
         self._exchange.modify_order(
-            ticket      = ticket,
+            order       = order,
             stop_loss   = stop_loss,
             take_profit = take_profit,
             price       = price,
             expiration  = expiration
         )
 
-    def cancel_order(self, ticket: int) -> None:
-        if ticket not in self._active_orders:
-            raise rmt.error.InvalidTicket(ticket)
+    def cancel_order(self, order: Order) -> None:
+        if order.ticket not in self._active_orders:
+            raise rmt.error.InvalidTicket(order.ticket)
 
-        self._exchange.cancel_order(ticket)
+        if isinstance(order, TimezonedOrder):
+            order = order.underlying_order
+
+        self._exchange.cancel_order(order)
 
     def close_order(self,
-                    ticket:   int,
+                    order:    Order,
                     price:    Optional[float] = None,
                     slippage: int             = 0,
                     lots:     Optional[float] = None
-    ) -> int:
-        if ticket not in self._active_orders:
-            raise rmt.error.InvalidTicket(ticket)
+    ) -> Optional[Order]:
+        if order.ticket not in self._active_orders:
+            raise rmt.error.InvalidTicket(order.ticket)
 
-        new_ticket = self._exchange.close_order(
-            ticket   = ticket,
+        if isinstance(order, TimezonedOrder):
+            order = order.underlying_order
+
+        new_order = self._exchange.close_order(
+            order    = order,
             price    = price,
             slippage = slippage,
             lots     = lots
         )
 
-        return new_ticket
+        if new_order is None:
+            return
+        
+        return self.astimezone(new_order)
 
     #===============================================================================
     # Internals
@@ -499,17 +514,13 @@ class Strategy(QObject):
     @pyqtSlot(int)
     def _notify_order_canceled(self, ticket: int):
         if ticket in self._active_orders:
-            self._active_orders.remove(ticket)
-            self._history_orders.add(ticket)
-
+            self._move_into_history(ticket)
             self.order_canceled.emit(ticket)
 
     @pyqtSlot(int)
     def _notify_order_expired(self, ticket: int):
         if ticket in self._active_orders:
-            self._active_orders.remove(ticket)
-            self._history_orders.add(ticket)
-
+            self._move_into_history(ticket)
             self.order_expired.emit(ticket)
 
     @pyqtSlot(int)
@@ -525,7 +536,9 @@ class Strategy(QObject):
     @pyqtSlot(int)
     def _notify_order_closed(self, ticket: int):
         if ticket in self._active_orders:
-            self._active_orders.remove(ticket)
-            self._history_orders.add(ticket)
-
+            self._move_into_history(ticket)
             self.order_closed.emit(ticket)
+
+    def _move_into_history(self, ticket: int):
+        self._history_orders[ticket] = self.get_order(ticket)
+        del self._active_orders[ticket]
