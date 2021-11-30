@@ -1,3 +1,4 @@
+import pytz
 from datetime     import datetime
 from typing       import Dict, List, Optional, Set
 from PyQt5.QtCore import QObject, pyqtSignal
@@ -130,10 +131,16 @@ class Exchange(QObject):
     The parameter passed in is the object `self.account`.
     """
 
-    def __init__(self):
+    def __init__(self, timezone: pytz.BaseTzInfo = pytz.utc):
         super().__init__()
 
-        self._closed_bars: Dict[str, List[Bar]] = {}
+        self._timezone = timezone
+
+    @property
+    def timezone(self) -> pytz.BaseTzInfo:
+        """The timezone used by this exchange."""
+
+        return self._timezone
 
     @property
     def account(self) -> Account:

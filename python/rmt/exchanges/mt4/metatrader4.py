@@ -21,9 +21,9 @@ class MetaTrader4(Exchange):
                  host:     str = 'localhost',
                  req_port: int = 32768,
                  sub_port: int = 32769,
-                 broker_tz: tzinfo = pytz.utc
+                 timezone: pytz.BaseTzInfo = pytz.utc
     ):
-        super().__init__()
+        super().__init__(timezone)
 
         ctx = zmq.Context.instance()
         self._req_socket = ctx.socket(zmq.REQ)
@@ -76,8 +76,6 @@ class MetaTrader4(Exchange):
 
         self._subscribed_symbols: Set[str] = set()
         self._logger = logging.getLogger(MetaTrader4.__name__)
-
-        self._broker_tz = broker_tz
 
         self._account: Optional[Account] = None
 
@@ -310,7 +308,7 @@ class MetaTrader4(Exchange):
             take_profit,
             comment,
             magic_number,
-            None if expiration is None else expiration.astimezone(self._broker_tz)
+            None if expiration is None else expiration.astimezone(self.timezone)
         )
 
         response_content = None
@@ -386,7 +384,7 @@ class MetaTrader4(Exchange):
             stop_loss,
             take_profit,
             price,
-            None if expiration is None else expiration.astimezone(self._broker_tz)
+            None if expiration is None else expiration.astimezone(self.timezone)
         )
 
         try:
@@ -625,13 +623,13 @@ class MetaTrader4(Exchange):
         """Creates a UTC time from a datetime string which is in broker's timezone."""
 
         naive_dt     = datetime.strptime(dt_string, '%Y.%m.%d %H:%M:%S')
-        broker_tz_dt = self._broker_tz.localize(naive_dt) # TODO: type hinting: Python library's tzinfo has no method 'localize()'
+        broker_tz_dt = self.timezone.localize(naive_dt)
         utc_dt       = broker_tz_dt.astimezone(pytz.utc)
 
         return utc_dt
 
     def _datetime_to_string(self, dt: datetime) -> str:
-        broker_tz_dt = dt.astimezone(self._broker_tz)
+        broker_tz_dt = dt.astimezone(self.timezone)
         dt_string    = broker_tz_dt.strftime('%Y.%m.%d %H:%M:%S')
 
         return dt_string
