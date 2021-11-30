@@ -3,13 +3,13 @@ from .      import Response
 
 class CloseOrder(Response):
     content_layout = {
-        'lots':       (float, 0.0),
-        'cp':         (float, 0.0),
-        'ct':         (int,   0),
+        'lots':       float,
+        'cp':         float,
+        'ct':         str,
         'comment':    (str,   ''),
-        'commission': (float, 0.0),
-        'profit':     (float, 0.0),
-        'swap':       (float, 0.0),
+        'commission': float,
+        'profit':     float,
+        'swap':       float,
         'new_order': ({
             'ticket':     int,
             'lots':       float,
@@ -66,7 +66,7 @@ class CloseOrder(Response):
     def close_price(self) -> float:
         return self['cp']
 
-    def close_time(self) -> int:
+    def close_time(self) -> str:
         return self['ct']
 
     def comment(self) -> str:

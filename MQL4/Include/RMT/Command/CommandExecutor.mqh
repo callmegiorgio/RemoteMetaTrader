@@ -404,8 +404,25 @@ CommandResult CommandExecutor::execute(const CloseOrderRequest& request, CloseOr
 
         if (OrderClose(request.ticket, lots, price, slippage))
         {
-            cmd_result = CommandResult::SUCCESS;
-            break;
+            if (!OrderSelect(request.ticket, SELECT_BY_TICKET))
+            {
+                response.close_price = OrderClosePrice();
+                response.close_time  = OrderCloseTime();
+                response.lots        = OrderLots();
+                response.comment     = OrderComment();
+                response.commission  = OrderCommission();
+                response.profit      = OrderProfit();
+                response.swap        = OrderSwap();
+                
+                cmd_result = CommandResult::SUCCESS;
+                break;
+            }
+            else
+            {
+                Print("PANIC at CloseOrderRequest! OrderSelect() failed with valid ticket ", request.ticket);
+
+                // Fallthrough
+            }
         }
 
         cmd_result = GetLastError();
@@ -424,17 +441,6 @@ CommandResult CommandExecutor::execute(const CloseOrderRequest& request, CloseOr
 
     if (cmd_result.code() != CommandResult::SUCCESS)
         return cmd_result;
-
-    if (OrderSelect(request.ticket, SELECT_BY_TICKET))
-    {
-        response.close_price = OrderClosePrice();
-        response.close_time  = OrderCloseTime();
-        response.lots        = OrderLots();
-        response.comment     = OrderComment();
-        response.commission  = OrderCommission();
-        response.profit      = OrderProfit();
-        response.swap        = OrderSwap();
-    }
 
     if (is_partial_close)
     {

@@ -442,7 +442,7 @@ class MetaTrader4(Exchange):
         order._status      = OrderStatus.CLOSED
         order._lots        = response.lots()
         order._close_price = response.close_price()
-        order._close_time  = self._timestamp_as_utc(response.close_time())
+        order._close_time  = self._utc_from_string(response.close_time())
         order._comment     = response.comment()
         order._commission  = response.commission()
         order._profit      = response.profit()
@@ -632,6 +632,15 @@ class MetaTrader4(Exchange):
         utc_time     = datetime.fromtimestamp(timestamp - utcoffset.seconds, pytz.utc)
 
         return utc_time
+
+    def _utc_from_string(self, dt_string: str) -> datetime:
+        """Creates a UTC time from a datetime string which is in broker's timezone."""
+
+        naive_dt     = datetime.strptime(dt_string, '%Y.%m.%d %H:%M:%S')
+        broker_tz_dt = self._broker_tz.localize(naive_dt) # TODO: type hinting: Python library's tzinfo has no method 'localize()'
+        utc_dt       = broker_tz_dt.astimezone(pytz.utc)
+
+        return utc_dt
 
     def _to_nonutc_timestamp(self, utc_time: datetime) -> int:
         timestamp         = int(utc_time.timestamp())
