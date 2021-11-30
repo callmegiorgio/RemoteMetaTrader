@@ -33,7 +33,7 @@ class TimezonedBar(Bar):
     def time(self) -> datetime:
         return super().time.astimezone(self._strategy.timezone)
 
-class TimezonedOrder(SlottedClass):
+class TimezonedOrder(Order):
     """Wraps a reference to an order along with a strategy for accessing the
     strategy's timezone. This allows orders returned by `Strategy.get_order()` to refer to the underlying order object,
     even if:
@@ -54,7 +54,16 @@ class TimezonedOrder(SlottedClass):
     __slots__ = ['_order', '_strategy']
 
     def __init__(self, order: Order, strategy):
-        super().__init__()
+        super().__init__(
+            ticket=order.ticket,
+            symbol=order.symbol,
+            side=order.side,
+            type=order.type,
+            lots=order.lots,
+            status=order.status,
+            open_price=order.open_price,
+            open_time=order.open_time
+        )
 
         self._order    = order
         self._strategy = strategy
@@ -213,12 +222,12 @@ class Strategy(QObject):
 
     tick_received  = pyqtSignal(Tick)
     bar_closed     = pyqtSignal(Bar)
-    order_opened   = pyqtSignal(int)
-    order_expired  = pyqtSignal(int)
-    order_canceled = pyqtSignal(int)
-    order_modified = pyqtSignal(int)
-    order_filled   = pyqtSignal(int)
-    order_closed   = pyqtSignal(int)
+    order_opened   = pyqtSignal(Order)
+    order_expired  = pyqtSignal(Order)
+    order_canceled = pyqtSignal(Order)
+    order_modified = pyqtSignal(Order)
+    order_filled   = pyqtSignal(Order)
+    order_closed   = pyqtSignal(Order)
 
     def __init__(self, exchange: Exchange, symbol: str):
         super().__init__()
@@ -506,39 +515,51 @@ class Strategy(QObject):
 
         self.bar_closed.emit(self.astimezone(bar))
 
-    @pyqtSlot(int)
-    def _notify_order_opened(self, ticket: int):
-        if ticket in self._active_orders:
-            self.order_opened.emit(ticket)
+    @pyqtSlot(Order)
+    def _notify_order_opened(self, order: Order):
+        if order.ticket in self._active_orders:
+            order = self.astimezone(order)
 
-    @pyqtSlot(int)
-    def _notify_order_canceled(self, ticket: int):
-        if ticket in self._active_orders:
-            self._move_into_history(ticket)
-            self.order_canceled.emit(ticket)
+            self.order_opened.emit(order)
 
-    @pyqtSlot(int)
-    def _notify_order_expired(self, ticket: int):
-        if ticket in self._active_orders:
-            self._move_into_history(ticket)
-            self.order_expired.emit(ticket)
+    @pyqtSlot(Order)
+    def _notify_order_canceled(self, order: Order):
+        if order.ticket in self._active_orders:
+            order = self.astimezone(order)
 
-    @pyqtSlot(int)
-    def _notify_order_modified(self, ticket: int):
-        if ticket in self._active_orders:
-            self.order_modified.emit(ticket)
+            self._move_into_history(order)
+            self.order_canceled.emit(order)
 
-    @pyqtSlot(int)
-    def _notify_order_filled(self, ticket: int):
-        if ticket in self._active_orders:
-            self.order_filled.emit(ticket)
+    @pyqtSlot(Order)
+    def _notify_order_expired(self, order: Order):
+        if order.ticket in self._active_orders:
+            order = self.astimezone(order)
 
-    @pyqtSlot(int)
-    def _notify_order_closed(self, ticket: int):
-        if ticket in self._active_orders:
-            self._move_into_history(ticket)
-            self.order_closed.emit(ticket)
+            self._move_into_history(order)
+            self.order_expired.emit(order)
 
-    def _move_into_history(self, ticket: int):
-        self._history_orders[ticket] = self.get_order(ticket)
-        del self._active_orders[ticket]
+    @pyqtSlot(Order)
+    def _notify_order_modified(self, order: Order):
+        if order.ticket in self._active_orders:
+            order = self.astimezone(order)
+
+            self.order_modified.emit(order)
+
+    @pyqtSlot(Order)
+    def _notify_order_filled(self, order: Order):
+        if order.ticket in self._active_orders:
+            order = self.astimezone(order)
+
+            self.order_filled.emit(order)
+
+    @pyqtSlot(Order)
+    def _notify_order_closed(self, order: Order):
+        if order.ticket in self._active_orders:
+            order = self.astimezone(order)
+
+            self._move_into_history(order)
+            self.order_closed.emit(order)
+
+    def _move_into_history(self, order: Order):
+        self._history_orders[order.ticket] = order
+        del self._active_orders[order.ticket]

@@ -842,9 +842,9 @@ class MetaTrader4(Exchange):
             order._swap         = swap
 
         if status == OrderStatus.PENDING:
-            self.order_opened.emit(ticket)
+            self.order_opened.emit(order)
         else:
-            self.order_filled.emit(ticket)
+            self.order_filled.emit(order)
     
     def _on_order_finished_event(self, event: events.OrderFinishedEvent):
         ticket = event.ticket()
@@ -888,11 +888,11 @@ class MetaTrader4(Exchange):
         order._swap        = swap
 
         if status == OrderStatus.CLOSED:
-            self.order_closed.emit(ticket)
+            self.order_closed.emit(order)
         elif status == OrderStatus.CANCELED:
-            self.order_canceled.emit(ticket)
+            self.order_canceled.emit(order)
         else:
-            self.order_expired.emit(ticket)
+            self.order_expired.emit(order)
 
     def _on_order_modified_event(self, event: events.OrderModifiedEvent):
         ticket = event.ticket()
@@ -905,7 +905,7 @@ class MetaTrader4(Exchange):
             order._take_profit = event.take_profit()
             order._expiration  = event.expiration()
 
-            self.order_modified.emit(ticket)
+            self.order_modified.emit(order)
         except KeyError:
             pass
 
@@ -920,7 +920,7 @@ class MetaTrader4(Exchange):
             order._profit     = event.profit()
             order._swap       = event.swap()
 
-            self.order_updated.emit(ticket)
+            self.order_updated.emit(order)
         except KeyError:
             pass
 
