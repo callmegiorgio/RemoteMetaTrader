@@ -6,10 +6,10 @@ class OrderFinishedEvent(Event):
         'ticket':     int,
         'opcode':     int,
         'cp':         float,
-        'ct':         int,
+        'ct':         str,
         'sl':         (float, None),
         'tp':         (float, None),
-        'expiration': (int,   None),
+        'expiration': (str,   None),
         'comment':    (str,   ''),
         'commission': (float, 0.0),
         'profit':     (float, 0.0),
@@ -25,7 +25,7 @@ class OrderFinishedEvent(Event):
     def close_price(self) -> float:
         return self['cp']
 
-    def close_time(self) -> int:
+    def close_time(self) -> str:
         return self['ct']
 
     def stop_loss(self) -> Optional[float]:
@@ -34,7 +34,7 @@ class OrderFinishedEvent(Event):
     def take_profit(self) -> Optional[float]:
         return self['tp']
 
-    def expiration(self) -> Optional[int]:
+    def expiration(self) -> Optional[str]:
         return self['expiration']
 
     def comment(self) -> str:

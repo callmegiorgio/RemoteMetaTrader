@@ -2,7 +2,7 @@ from . import Event
 
 class BarClosedEvent(Event):    
     content_layout = {
-        'time':   int,
+        'time':   str,
         'open':   float,
         'high':   float,
         'low':    float,
@@ -13,7 +13,7 @@ class BarClosedEvent(Event):
     def symbol(self) -> str:
         return self.dynamic_name
 
-    def time(self) -> int:
+    def time(self) -> str:
         return self['time']
 
     def open(self) -> float:

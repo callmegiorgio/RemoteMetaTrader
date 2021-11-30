@@ -2,12 +2,12 @@ from . import Response
 
 class GetTick(Response):
     content_layout = {
-        'time': int,
+        'time': str,
         'bid':  float,
         'ask':  float
     }
 
-    def server_time(self) -> int: 
+    def time(self) -> str: 
         return self['time']
 
     def bid(self) -> float: 

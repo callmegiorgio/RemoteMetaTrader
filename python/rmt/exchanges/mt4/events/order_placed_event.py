@@ -8,10 +8,10 @@ class OrderPlacedEvent(Event):
         'symbol':     str,
         'lots':       float,
         'op':         float,
-        'ot':         int,
+        'ot':         str,
         'sl':         (float, None),
         'tp':         (float, None),
-        'expiration': (int,   None),
+        'expiration': (str,   None),
         'magic':      (int,   0),
         'comment':    (str,   ''),
         'commission': (float, 0.0),
@@ -34,7 +34,7 @@ class OrderPlacedEvent(Event):
     def open_price(self) -> float:
         return self['op']
 
-    def open_time(self) -> int:
+    def open_time(self) -> str:
         return self['ot']
 
     def stop_loss(self) -> Optional[float]:
@@ -43,7 +43,7 @@ class OrderPlacedEvent(Event):
     def take_profit(self) -> Optional[float]:
         return self['tp']
 
-    def expiration(self) -> Optional[int]:
+    def expiration(self) -> Optional[str]:
         return self['expiration']
 
     def magic_number(self) -> int:

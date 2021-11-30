@@ -5,7 +5,7 @@ class PlaceOrder(Response):
         'ticket':     int,
         'lots':       float,
         'op':         float,
-        'ot':         int,
+        'ot':         str,
         'commission': float,
         'profit':     float,
         'swap':       float
@@ -20,7 +20,7 @@ class PlaceOrder(Response):
     def open_price(self) -> float:
         return self['op']
 
-    def open_time(self) -> int:
+    def open_time(self) -> str:
         return self['ot']
 
     def commission(self) -> float:

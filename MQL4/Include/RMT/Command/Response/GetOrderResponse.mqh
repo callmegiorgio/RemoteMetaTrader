@@ -11,12 +11,12 @@
 ///   "symbol":     string,
 ///   "lots":       double,
 ///   "op":         double,
-///   "ot":         datetime,
+///   "ot":         string,
 ///   "cp":         ?double,
-///   "ct":         ?datetime,
+///   "ct":         ?string,
 ///   "sl":         ?double,
 ///   "tp":         ?double,
-///   "expiration": ?datetime,
+///   "expiration": ?string,
 ///   "comment":    string,
 ///   "magic":      integer,
 ///   "commission": double,
@@ -32,12 +32,18 @@ public:
         writer.write("symbol",     this.symbol);
         writer.write("lots",       this.lots);
         writer.write("op",         this.open_price);
-        writer.write("ot",         this.open_time);
+        writer.write("ot",         TimeToStr(this.open_time, TIME_DATE|TIME_SECONDS));
         writer.write("cp",         this.close_price);
-        writer.write("ct",         this.close_time);
+
+        if (this.close_time.has_value())
+            writer.write("ct", TimeToStr(this.close_time.value()));
+
         writer.write("sl",         this.stop_loss);
         writer.write("tp",         this.take_profit);
-        writer.write("expiration", this.expiration);
+
+        if (this.expiration.has_value())
+            writer.write("expiration", TimeToStr(this.expiration.value()));
+
         writer.write("comment",    this.comment);
         writer.write("magic",      this.magic_number);
         writer.write("commission", this.commission);

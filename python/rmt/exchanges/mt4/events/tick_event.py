@@ -1,12 +1,12 @@
 from . import Event
 
 class TickEvent(Event):
-    content_layout = [int, float, float]
+    content_layout = [str, float, float]
 
     def symbol(self) -> str:
         return self.dynamic_name
 
-    def server_time(self) -> int:
+    def time(self) -> str:
         return self[0]
 
     def bid(self) -> float:

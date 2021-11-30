@@ -36,7 +36,7 @@ public:
         msg["op"]         = event.order.open_price;
         msg["sl"]         = event.order.stop_loss;
         msg["tp"]         = event.order.take_profit;
-        msg["expiration"] = event.order.expiration;
+        msg["expiration"] = TimeToStr(event.order.expiration, TIME_DATE|TIME_SECONDS);
 
         m_server.publish("orderModified", msg.serialize());
     }

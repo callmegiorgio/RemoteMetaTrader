@@ -37,7 +37,7 @@ public:
     {
         JsonValue msg;
 
-        msg["time"]   = event.bar.time();
+        msg["time"]   = TimeToStr(event.bar.time(), TIME_DATE|TIME_SECONDS);
         msg["open"]   = event.bar.open();
         msg["high"]   = event.bar.high();
         msg["low"]    = event.bar.low();

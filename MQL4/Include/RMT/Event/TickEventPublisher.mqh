@@ -34,7 +34,7 @@ public:
     {
         JsonValue msg;
 
-        msg[0] = event.tick.server_time();
+        msg[0] = TimeToStr(event.tick.server_time(), TIME_DATE|TIME_SECONDS);
         msg[1] = event.tick.bid();
         msg[2] = event.tick.ask();
 

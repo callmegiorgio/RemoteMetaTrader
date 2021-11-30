@@ -1,5 +1,4 @@
-from datetime import datetime, timezone
-from .        import Event
+from . import Event
 
 class OrderModifiedEvent(Event):
     content_layout = {
@@ -7,7 +6,7 @@ class OrderModifiedEvent(Event):
         'op':         float,
         'sl':         float,
         'tp':         float,
-        'expiration': int
+        'expiration': str
     }
 
     def ticket(self) -> int:
@@ -22,5 +21,5 @@ class OrderModifiedEvent(Event):
     def take_profit(self) -> float:
         return self['tp']
 
-    def expiration(self) -> datetime:
-        return datetime.fromtimestamp(self['expiration'], timezone.utc)
+    def expiration(self) -> str:
+        return self['expiration']

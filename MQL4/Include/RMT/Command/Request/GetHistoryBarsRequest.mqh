@@ -8,8 +8,8 @@
 /// {
 ///   "symbol":     string,
 ///   "timeframe":  string,
-///   "start_time": ?datetime,
-///   "end_time":   ?datetime
+///   "start_time": ?string,
+///   "end_time":   ?string
 /// }
 class GetHistoryBarsRequest {
 public:
@@ -31,8 +31,14 @@ public:
         else if (timeframe_str == "MN1") this.timeframe = PERIOD_MN1;
         else                             this.timeframe = ENUM_TIMEFRAMES(-1);
 
-        reader.read_optional("start_time", this.start_time);
-        reader.read_optional("end_time",   this.end_time);
+        Optional<string> start_time_str;
+        Optional<string> end_time_str;
+
+        if (reader.read_optional("start_time", start_time_str))
+            start_time = StrToTime(start_time_str.value());
+
+        if (reader.read_optional("end_time", end_time_str))
+            end_time = StrToTime(end_time_str.value());
 
         return true;
     }

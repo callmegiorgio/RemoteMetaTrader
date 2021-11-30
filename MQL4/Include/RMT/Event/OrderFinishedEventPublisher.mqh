@@ -16,10 +16,10 @@
 ///    "ticket":     integer,
 ///    "opcode":     integer,
 ///    "cp":         double,
-///    "ct":         datetime,
+///    "ct":         string,
 ///    "sl":         ?double,
 ///    "tp":         ?double,
-///    "expiration": ?datetime,
+///    "expiration": ?string,
 ///    "comment":    ?string,
 ///    "commission": ?double,
 ///    "profit":     ?double,
@@ -41,7 +41,7 @@ public:
         msg["ticket"] = event.ticket;
         msg["opcode"] = event.order.type;
         msg["cp"]     = event.order.close_price;
-        msg["ct"]     = event.order.close_time;
+        msg["ct"]     = TimeToStr(event.order.close_time, TIME_DATE|TIME_SECONDS);
 
         if (event.order.stop_loss != 0)
             msg["sl"] = event.order.stop_loss;
@@ -50,7 +50,7 @@ public:
             msg["tp"] = event.order.take_profit;
 
         if (event.order.expiration != 0)
-            msg["expiration"] = event.order.expiration;
+            msg["expiration"] = TimeToStr(event.order.expiration, TIME_DATE|TIME_SECONDS);
 
         if (event.order.comment != NULL && event.order.comment != "")
             msg["comment"] = event.order.comment;

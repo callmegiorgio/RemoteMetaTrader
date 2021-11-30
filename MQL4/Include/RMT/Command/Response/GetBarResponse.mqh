@@ -5,12 +5,12 @@
 #include "../../Utility/JsonWriter.mqh"
 
 /// Response:
-/// [datetime, double, double, double, double, integer]
+/// [string, double, double, double, double, integer]
 class GetBarResponse {
 public:
     void write(JsonWriter& writer) const
     {
-        writer.write(0, this.bar.time());
+        writer.write(0, TimeToStr(this.bar.time(), TIME_DATE|TIME_SECONDS));
         writer.write(1, this.bar.open());
         writer.write(2, this.bar.high());
         writer.write(3, this.bar.low());

@@ -1,9 +1,9 @@
 from . import Response
 
 class GetBar(Response):
-    content_layout = [int, float, float, float, float, int]
+    content_layout = [str, float, float, float, float, int]
 
-    def time(self) -> int:
+    def time(self) -> str:
         return self[0]
 
     def open(self) -> float:

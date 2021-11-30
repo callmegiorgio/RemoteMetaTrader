@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing   import Optional
 from rmt      import Timeframe
 from ..       import Content
@@ -9,8 +8,8 @@ class GetHistoryBars(Request):
 
     def __init__(self,
                  symbol:     str,
-                 start_time: Optional[int],
-                 end_time:   Optional[int],
+                 start_time: Optional[str],
+                 end_time:   Optional[str],
                  timeframe:  Timeframe = Timeframe.M1
     ):
         super().__init__()

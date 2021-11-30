@@ -1,12 +1,12 @@
 from . import Response
 
 class GetHistoryBars(Response):
-    content_layout = [[int, float, float, float, float, int]]
+    content_layout = [[str, float, float, float, float, int]]
 
     def bar_count(self) -> int:
         return len(self)
 
-    def time(self, index: int) -> int:
+    def time(self, index: int) -> str:
         return self[index][0]
 
     def open(self, index: int) -> float:

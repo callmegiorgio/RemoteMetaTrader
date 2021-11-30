@@ -46,7 +46,7 @@ public:
         msg["lots"]       = event.order.lots;
         msg["opcode"]     = event.order.type;
         msg["op"]         = event.order.open_price;
-        msg["ot"]         = event.order.open_time;
+        msg["ot"]         = TimeToStr(event.order.open_time, TIME_DATE|TIME_SECONDS);
 
         if (event.order.stop_loss != 0)
             msg["sl"] = event.order.stop_loss;
@@ -55,7 +55,7 @@ public:
             msg["tp"] = event.order.take_profit;
 
         if (event.order.expiration != 0)
-            msg["expiration"] = event.order.expiration;
+            msg["expiration"] = TimeToStr(event.order.expiration, TIME_DATE|TIME_SECONDS);
 
         if (event.order.magic_number != 0)
             msg["magic"] = event.order.magic_number;

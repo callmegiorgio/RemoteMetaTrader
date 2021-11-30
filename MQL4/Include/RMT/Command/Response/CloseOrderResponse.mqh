@@ -64,7 +64,7 @@ public:
     void write(JsonWriter& writer) const
     {
         writer.write("cp",         this.close_price);
-        writer.write("ct",         TimeToStr(this.close_time));
+        writer.write("ct",         TimeToStr(this.close_time, TIME_DATE|TIME_SECONDS));
         writer.write("lots",       this.lots);
         writer.write("comment",    this.comment);
         writer.write("commission", this.commission);

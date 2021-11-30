@@ -118,7 +118,7 @@ class MetaTrader4(Exchange):
         response = responses.GetTick(self._send_request(request))
 
         tick = Tick(
-            time = self._timestamp_as_utc(response.server_time()),
+            time = self._utc_from_string(response.time()),
             bid  = response.bid(),
             ask  = response.ask()
         )
@@ -189,8 +189,8 @@ class MetaTrader4(Exchange):
                          end_time:   Optional[datetime] = None,
                          timeframe:  Timeframe = Timeframe.M1
     ) -> List[Bar]:
-        start_time = None if start_time is None else self._to_nonutc_timestamp(start_time)
-        end_time   = None if end_time   is None else self._to_nonutc_timestamp(end_time)
+        start_time = None if start_time is None else self._datetime_to_string(start_time)
+        end_time   = None if end_time   is None else self._datetime_to_string(end_time)
 
         request  = requests.GetHistoryBars(symbol, start_time, end_time, timeframe)
         response = responses.GetHistoryBars(self._send_request(request))
@@ -200,7 +200,7 @@ class MetaTrader4(Exchange):
 
         for i in range(bar_count):
             bar = Bar(
-                time   = self._timestamp_as_utc(response.time(i)),
+                time   = self._utc_from_string(response.time(i)),
                 open   = response.open(i),
                 high   = response.high(i),
                 low    = response.low(i),
@@ -221,7 +221,7 @@ class MetaTrader4(Exchange):
         response = responses.GetBar(self._send_request(request))
 
         bar = Bar(
-            time   = self._timestamp_as_utc(response.time()),
+            time   = self._utc_from_string(response.time()),
             open   = response.open(),
             high   = response.high(),
             low    = response.low(),
@@ -359,7 +359,7 @@ class MetaTrader4(Exchange):
             lots         = response_lots,
             status       = status,
             open_price   = response_open_price,
-            open_time    = None if response_open_time is None else self._timestamp_as_utc(response_open_time),
+            open_time    = None if response_open_time is None else self._utc_from_string(response_open_time),
             expiration   = expiration,
             stop_loss    = stop_loss,
             take_profit  = take_profit,
@@ -539,12 +539,12 @@ class MetaTrader4(Exchange):
             lots         = response.lots(),
             status       = status,
             open_price   = response.open_price(),
-            open_time    = None if open_time is None else self._timestamp_as_utc(open_time),
+            open_time    = None if open_time is None else self._utc_from_string(open_time),
             close_price  = close_price,
-            close_time   = None if close_time is None else self._timestamp_as_utc(close_time),
+            close_time   = None if close_time is None else self._utc_from_string(close_time),
             stop_loss    = response.stop_loss(),
             take_profit  = response.take_profit(),
-            expiration   = None if expiration is None else self._timestamp_as_utc(expiration),
+            expiration   = None if expiration is None else self._utc_from_string(expiration),
             magic_number = response.magic_number(),
             comment      = response.comment(),
             commission   = response.commission(),
@@ -621,18 +621,6 @@ class MetaTrader4(Exchange):
         self._sub_socket.unsubscribe('tick.' + symbol)
         self._sub_socket.unsubscribe('bar.' + symbol)
 
-    def _timestamp_as_utc(self, timestamp: int) -> datetime:
-        """Creates a datetime from a timestamp which is in a possibly non-UTC timezone.
-        
-        TODO: use date strings instead of timestamps (which should be ALWAYS in UTC).
-        """
-
-        non_utc_time = datetime.fromtimestamp(timestamp)
-        utcoffset    = self._broker_tz.utcoffset(non_utc_time)
-        utc_time     = datetime.fromtimestamp(timestamp - utcoffset.seconds, pytz.utc)
-
-        return utc_time
-
     def _utc_from_string(self, dt_string: str) -> datetime:
         """Creates a UTC time from a datetime string which is in broker's timezone."""
 
@@ -642,12 +630,11 @@ class MetaTrader4(Exchange):
 
         return utc_dt
 
-    def _to_nonutc_timestamp(self, utc_time: datetime) -> int:
-        timestamp         = int(utc_time.timestamp())
-        utcoffset         = self._broker_tz.utcoffset(utc_time.replace(tzinfo=None))
-        non_utc_timestamp = timestamp + utcoffset.seconds
+    def _datetime_to_string(self, dt: datetime) -> str:
+        broker_tz_dt = dt.astimezone(self._broker_tz)
+        dt_string    = broker_tz_dt.strftime('%Y.%m.%d %H:%M:%S')
 
-        return non_utc_timestamp
+        return dt_string
 
     def _parse_response(self, response: str) -> Tuple[CommandResultCode, Optional[Content]]:
         sep_index  = response.find(' ')
@@ -751,7 +738,7 @@ class MetaTrader4(Exchange):
 
     def _on_tick_event(self, event: events.TickEvent):
         tick = Tick(
-            time = self._timestamp_as_utc(event.server_time()),
+            time = self._utc_from_string(event.time()),
             bid  = event.bid(),
             ask  = event.ask()
         )
@@ -760,7 +747,7 @@ class MetaTrader4(Exchange):
 
     def _on_bar_closed_event(self, event: events.BarClosedEvent):
         bar = Bar(
-            time   = self._timestamp_as_utc(event.time()),
+            time   = self._utc_from_string(event.time()),
             open   = event.open(),
             high   = event.high(),
             low    = event.low(),
@@ -783,11 +770,11 @@ class MetaTrader4(Exchange):
         symbol       = event.symbol()
         lots         = event.lots()
         open_price   = event.open_price()
-        open_time    = self._timestamp_as_utc(event.open_time())
+        open_time    = self._utc_from_string(event.open_time())
         stop_loss    = event.stop_loss()
         take_profit  = event.take_profit()
         expiration   = event.expiration()
-        expiration   = None if expiration is None else self._timestamp_as_utc(expiration)
+        expiration   = None if expiration is None else self._utc_from_string(expiration)
         magic_number = event.magic_number()
         comment      = event.comment()
         commission   = event.commission()
@@ -866,11 +853,11 @@ class MetaTrader4(Exchange):
 
         opcode      = OperationCode(event.opcode())
         close_price = event.close_price()
-        close_time  = self._timestamp_as_utc(event.close_time())
+        close_time  = self._utc_from_string(event.close_time())
         stop_loss   = event.stop_loss()
         take_profit = event.take_profit()
         expiration  = event.expiration()
-        expiration  = None if expiration is None else self._timestamp_as_utc(expiration)
+        expiration  = None if expiration is None else self._utc_from_string(expiration)
         comment     = event.comment()
         commission  = event.commission()
         profit      = event.profit()
@@ -912,7 +899,7 @@ class MetaTrader4(Exchange):
             order._open_price  = event.open_price()
             order._stop_loss   = event.stop_loss()
             order._take_profit = event.take_profit()
-            order._expiration  = event.expiration()
+            order._expiration  = self._utc_from_string(event.expiration())
 
             self.order_modified.emit(order)
         except KeyError:

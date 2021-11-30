@@ -5,8 +5,8 @@
 
 /// Response:
 /// [
-///   [datetime, double, double, double, double, integer],
-///   [datetime, double, double, double, double, integer],
+///   [string, double, double, double, double, integer],
+///   [string, double, double, double, double, integer],
 ///   ...
 /// ]
 class GetHistoryBarsResponse {
@@ -17,7 +17,7 @@ public:
         {
             JsonWriter bar = writer.subdocument(i);
 
-            bar.write(0, this.rates[i].time);
+            bar.write(0, TimeToStr(this.rates[i].time, TIME_DATE|TIME_SECONDS));
             bar.write(1, this.rates[i].open);
             bar.write(2, this.rates[i].high);
             bar.write(3, this.rates[i].low);

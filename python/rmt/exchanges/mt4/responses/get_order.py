@@ -8,12 +8,12 @@ class GetOrder(Response):
         'symbol':     str,
         'lots':       float,
         'op':         float,
-        'ot':         int,
-        'cp':         (int,   None),
-        'ct':         (int,   None),
+        'ot':         str,
+        'cp':         (float, None),
+        'ct':         (str,   None),
         'sl':         (float, None),
         'tp':         (float, None),
-        'expiration': (int,   None),
+        'expiration': (str,   None),
         'comment':    (str,   ''),
         'magic':      (int,   0),
         'commission': float,
@@ -36,13 +36,13 @@ class GetOrder(Response):
     def open_price(self) -> float:
         return self['op']
 
-    def open_time(self) -> int:
+    def open_time(self) -> str:
         return self['ot']
 
     def close_price(self) -> Optional[float]:
         return self['cp']
 
-    def close_time(self) -> Optional[int]:
+    def close_time(self) -> Optional[str]:
         return self['ct']
 
     def stop_loss(self) -> Optional[float]:
@@ -51,7 +51,7 @@ class GetOrder(Response):
     def take_profit(self) -> Optional[float]:
         return self['tp']
 
-    def expiration(self) -> Optional[int]:
+    def expiration(self) -> Optional[str]:
         return self['expiration']
 
     def comment(self) -> str:
