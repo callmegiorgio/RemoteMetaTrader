@@ -229,14 +229,13 @@ class TrailingStopStrategy(Strategy):
 
         if order.symbol != self.instrument.symbol:
             raise ValueError(
-                "order #{0} instrument ({1}) is not same as this strategy's instrument ({2})"
-                .format(ticket, order.symbol, self.instrument.symbol)
+                f"order #{ ticket } instrument ({ order.symbol }) is not same as this strategy's instrument ({ self.instrument.symbol })"
             )
 
         stop_loss = order.stop_loss
 
         if stop_loss is None:
-            raise ValueError('order #{} has no Stop Loss level'.format(ticket))
+            raise ValueError(f'order #{ ticket } has no Stop Loss level')
 
         ts_list = self._bar_closed_ts_list if at_bar_close else self._tick_ts_list
 
@@ -344,7 +343,8 @@ class TrailingStopStrategy(Strategy):
                     new_stop_loss = floor(coverage_price / self.instrument.tick_size) * self.instrument.tick_size
 
         if (new_stop_loss * side) >= (current_price * side):
-           return # cannot place Stop Loss at market price or above market price
+            self.logger.warn('TrailingStop: cannot place Stop Loss at market price (%s) or beyond it', self.instrument.format(current_price))
+            return
 
         try:
             self.modify_order(
@@ -353,4 +353,4 @@ class TrailingStopStrategy(Strategy):
                 take_profit = order.take_profit
             )
         except error.RMTError as e:
-            print('_update_trailing_stop:', str(e))
+            self.logger.error('TrailingStop: could not modify order: %s', str(e))
