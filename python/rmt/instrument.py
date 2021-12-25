@@ -281,3 +281,19 @@ class Instrument(SlottedClass):
         lots = round(lots, 2)
 
         return max(min(lots, self.max_lot), self.min_lot)
+
+    def format(self, price: float) -> str:
+        """Formats a price of this instrument as a string, accounting for its decimal places.
+        
+        >>> instrument = ...
+        >>> instrument.decimal_places
+        2
+        >>> instrument.format(1.234)
+        '1.23'
+        >>> instrument.format(1.235)
+        '1.24'
+        """
+
+        fmt = '{:.' + str(self.decimal_places) + 'f}'
+
+        return fmt.format(price)
